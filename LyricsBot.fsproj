@@ -3,15 +3,21 @@
     <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="LyricsBot.fs"/>
-    <Compile Include="LoadApiSample.fsx"/>
+    <Compile Include="MusixMatchApi.fs" />
+    <Compile Include="LyricsBot.fs" />
+    <Content Include="appSettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>    
+    <Content Include="apiSamples/*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Core" Version="2.0.0"/>
-    <PackageReference Include="Microsoft.Azure.CognitiveServices.Language" Version="1.0.0-preview"/>
-    <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="1.0.6"/>
-    <PackageReference Include="Newtonsoft.Json" Version="11.0.2"/>
-    <PackageReference Include="Telegram.Bot" Version="14.2.0-rc-452"/>
-    <PackageReference Include="FSharp.Data" Version="3.0.0-beta3"/>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Core" Version="2.0.0" />
+    <PackageReference Include="Microsoft.Azure.CognitiveServices.Language" Version="1.0.0-preview" />
+    <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="1.0.6" />
+    <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
+    <PackageReference Include="Telegram.Bot" Version="14.2.0-rc-452" />
+    <PackageReference Include="FSharp.Data" Version="3.0.0-beta3" />
   </ItemGroup>
 </Project>

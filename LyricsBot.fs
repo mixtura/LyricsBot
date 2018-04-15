@@ -8,11 +8,16 @@ open Telegram.Bot.Types
 open Telegram.Bot.Types.Enums
 
 module Utils = 
+  open FSharp.Data
+
+  type AppSettings = JsonProvider<"appSettings.json">
   type SearchRequest = {
     ChatId : Int64;
     SearchQuery: string;
   }
   
+  let appSettings = AppSettings.GetSample()
+
   let serializeObj obj = JsonConvert.SerializeObject obj
   
   let deserializeObj<'a> str = JsonConvert.DeserializeObject<'a> str
@@ -24,13 +29,13 @@ module Utils =
 
 module SearchLyrics = 
   open Utils
-  open FSharp.Data
 
-  type LyricsApi = JsonProvider<"origion.apiseeds.com.sample.json">
-  
   let run (searchRequestData: string, log: TraceWriter) = 
-    let searchRequest = deserializeObj searchRequestData
-    // let searchResult = LyricsApi.Load()
+    let searchRequest = deserializeObj<SearchRequest> searchRequestData
+    let apiKey = appSettings.ApiKeys.MusixMatch.ToString()
+    let searchResult =
+      MusixMatchApi.getLyrics apiKey (searchRequest.SearchQuery, searchRequest.SearchQuery) |> 
+      MusixMatchApi.MusixMatchLyricsProvider.Load
     ()
 
 module AnswerToUser =
@@ -41,9 +46,10 @@ module ProcessBotUpdate =
   
   let creatUri str = Uri.TryCreate(str, UriKind.Absolute) |> tryToOption
   
+  // TODO: Consider using fParse
   let extractQueryValueFromUri key (uri : Uri) = 
-    uri.Query.Split '&' |>
-    Array.map (fun queryPair -> queryPair.Split '=') |>
+    uri.Query.Split [|'&'; '='|] |>
+    Array.chunkBySize 2 |>
     Array.tryFind (fun pair -> pair.[0] = key) |>
     Option.bind (fun pair -> Some pair.[1])
   
