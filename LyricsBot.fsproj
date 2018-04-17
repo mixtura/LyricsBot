@@ -3,11 +3,8 @@
     <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="MusixMatchApi.fs" />
+    <Compile Include="LyricsWikiaGrabber.fs" />
     <Compile Include="LyricsBot.fs" />
-    <Content Include="appSettings.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>    
     <Content Include="apiSamples/*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

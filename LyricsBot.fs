@@ -8,15 +8,19 @@ open Telegram.Bot.Types
 open Telegram.Bot.Types.Enums
 
 module Utils = 
-  open FSharp.Data
+  type GetLyricsRequest = {
+    Artist: string;
+    Name: string;
+  }
 
-  type AppSettings = JsonProvider<"appSettings.json">
-  type SearchRequest = {
-    ChatId : Int64;
+  type SearchLyricsRequest = {
     SearchQuery: string;
   }
-  
-  let appSettings = AppSettings.GetSample()
+
+  let rec firstSome arg funcs = 
+    match funcs with
+    | x::xs -> Option.orElseWith (fun () -> firstSome arg xs) (x arg)
+    | [] -> None
 
   let serializeObj obj = JsonConvert.SerializeObject obj
   
@@ -29,13 +33,12 @@ module Utils =
 
 module SearchLyrics = 
   open Utils
+  open LyricsWikiaGrabber
 
   let run (searchRequestData: string, log: TraceWriter) = 
-    let searchRequest = deserializeObj<SearchRequest> searchRequestData
-    let apiKey = appSettings.ApiKeys.MusixMatch.ToString()
-    let searchResult =
-      MusixMatchApi.getLyrics apiKey (searchRequest.SearchQuery, searchRequest.SearchQuery) |> 
-      MusixMatchApi.MusixMatchLyricsProvider.Load
+    log.Info("Search lyrics started.")
+    let searchRequest = deserializeObj<GetLyricsRequest> searchRequestData
+    let lyrics = findLyrics searchRequest.Artist searchRequest.Name
     ()
 
 module AnswerToUser =
@@ -43,45 +46,57 @@ module AnswerToUser =
 
 module ProcessBotUpdate =  
   open Utils  
-  
-  let creatUri str = Uri.TryCreate(str, UriKind.Absolute) |> tryToOption
-  
-  // TODO: Consider using fParse
-  let extractQueryValueFromUri key (uri : Uri) = 
-    uri.Query.Split [|'&'; '='|] |>
-    Array.chunkBySize 2 |>
-    Array.tryFind (fun pair -> pair.[0] = key) |>
-    Option.bind (fun pair -> Some pair.[1])
-  
-  let parseGoogleMusicLink str = 
-    creatUri str |> 
-    Option.filter (fun uri -> uri.Host.Equals "play.google.com") |>
-    Option.bind (extractQueryValueFromUri "t") |>
-    Option.bind (fun query -> query.Replace ('_', ' ') |> Some)
-  
-  let parseSearchRequest str = 
-    str |> 
-    parseGoogleMusicLink |> 
-    function
-      | Some s -> s
-      | None -> str
 
-  let (|MessageSearchRequest|_|) (u: Update) = 
-    if u.Type = UpdateType.Message 
-    then Some {
-      ChatId = u.Message.Chat.Id; 
-      SearchQuery = (parseSearchRequest u.Message.Text) }
-    else None
+  let run(update: Update, searchLyricsRequests: ICollection<string>, getLyricsRequests: ICollection<string>, log: TraceWriter) = 
+    log.Info "Process bot update started."
 
-  let storeSearchRequest (searchRequests: ICollection<string>) searchRequest =  
-      serializeObj searchRequest |> 
-      searchRequests.Add
+    let creatUri str = Uri.TryCreate(str, UriKind.Absolute) |> tryToOption
+  
+    let extractQueryValueFromUri key (uri : Uri) = 
+      uri.Query.Split [|'&'; '='|] |>
+      Array.chunkBySize 2 |>
+      Array.tryFind (fun pair -> pair.[0] = key) |>
+      Option.bind (fun pair -> Some pair.[1])
+    
+    let parseGoogleMusicLink str = 
+      creatUri str 
+      |> Option.filter (fun uri -> uri.Host.Equals "play.google.com") 
+      |> Option.bind (extractQueryValueFromUri "t") 
+      |> Option.bind (fun query -> query.Replace('_', ' ').Split('-') |> Some) 
+      |> function
+        | Some [|artist; name;|] -> Some { Artist = artist; Name = name  }
+        | Some _ | None -> None
+    
+    let parseApplyMusicLink str = Some { Artist = ""; Name = ""}
 
-  let run(update: Update, searchRequests: ICollection<string>, log: TraceWriter) = 
-    log.Info "Process update"
+    let parseAsGetRequest str = 
+      firstSome str [parseGoogleMusicLink; parseApplyMusicLink]
+
+    let parseAsSearchRequest str =
+      Some { SearchQuery = str }
+
+    let (|MessageUpdate|_|) (u: Update) = 
+      if u.Type = UpdateType.Message 
+      then Some u
+      else None
+
     match update with
-      | MessageSearchRequest(request) -> 
-          request |> 
-          storeSearchRequest searchRequests
-          log.Info "Process update success"
-      | _ -> log.Info "Process update failed"
+      | MessageUpdate(update) ->
+      
+        let createQueueMessage request = (update.Message.Chat.Id, request) |> serializeObj |> Some
+          
+        let getRequest =
+          parseAsGetRequest 
+          >> Option.bind createQueueMessage 
+          >> Option.map getLyricsRequests.Add
+
+        let searchRequest =
+          parseAsSearchRequest 
+          >> Option.bind createQueueMessage
+          >> Option.map searchLyricsRequests.Add
+
+        firstSome update.Message.Text [getRequest; searchRequest] |> function 
+          | Some _ -> log.Info "Process update succeesed." 
+          | None -> log.Error "Process update fail"
+      | _ -> log.Error "Process update failed"
+    ()
