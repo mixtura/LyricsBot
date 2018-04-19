@@ -25,10 +25,11 @@ module ProcessBotUpdate =
   open Telegram.Bot.Types
   open Telegram.Bot.Types.Enums
 
-  let run (update: Update, 
-           searchLyricsRequests: ICollection<string>, 
-           getLyricsRequests: ICollection<string>, 
-           log: TraceWriter) = 
+  let run 
+    (update: Update, 
+     searchLyricsRequests: ICollection<string>, 
+     getLyricsRequests: ICollection<string>, 
+     log: TraceWriter) = 
     
     log.Info "Process update started."
 
