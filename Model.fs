@@ -1,11 +1,10 @@
-namespace LyricsBot
+module LyricsBot.Model
 
-module Model =
-  type Song = {
-    Artist: string;
-    Track: string;
-  }
+type Song = {
+  Artist: string;
+  Track: string;
+}
 
-  type Request = 
-    | GetLyrics of Song 
-    | SearchLyrics of string 
+type Request = 
+  | GetLyrics of Song 
+  | SearchLyrics of string 

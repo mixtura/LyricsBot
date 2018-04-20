@@ -1,6 +1,5 @@
-namespace LyricsBot
+module LyricsBot.Grabbers
 
-module LyricsWikiaGrabber =    
   open FSharp.Data
   open Model
   
