@@ -6,33 +6,37 @@ open Telegram.Bot.Types
 open Telegram.Bot.Types.Enums
 
 let processUpdate (update: Update) =
+  let extractLink (str:string) = 
+    str.Split '_' 
+    |> Array.tryFind (fun x -> x.StartsWith "http://" || x.StartsWith "https://")
+
   let parseGoogleMusicLink str = 
-    creatUri str 
+    Option.bind creatUri str 
     |> Option.filter (fun uri -> uri.Host.Equals "play.google.com") 
     |> Option.bind (extractQueryValueFromUri "t") 
     |> Option.bind (fun query -> query.Replace('_', ' ').Split('-') |> Some) 
     |> function
-      | Some [|artist; name;|] -> Some { Artist = artist; Track = name  }
+      | Some [|name; artist;|] -> Some { Artist = artist.Trim(); Track = name.Trim()  }
       | Some _ | None -> None
   
   let parseAppleMusicLink str = Some { Artist = ""; Track = ""}
 
-  let parseGetRequest str = 
+  let parseGetRequest message = 
     [parseGoogleMusicLink; parseAppleMusicLink] 
-    |> List.map (fun f -> fun _ -> f str)
+    |> List.map (fun f -> fun _ -> extractLink message |> f)
     |> firstSome
     |> Option.map GetLyrics
 
-  let parseSearchRequest str = SearchLyrics str |> Some
+  let parseSearchRequest message = SearchLyrics message |> Some
 
   let (|MessageUpdate|_|) (u: Update) = 
     if u.Type = UpdateType.Message 
-    then Some u
+    then Some u.Message
     else None
 
   match update with
-    | MessageUpdate(update) ->
+    | MessageUpdate(message) ->
       [parseGetRequest; parseSearchRequest]
-        |> List.map (fun x -> fun _ -> x update.Message.Text)
+        |> List.map (fun x -> fun _ -> x message.Text)
         |> firstSome
     | _ -> None
