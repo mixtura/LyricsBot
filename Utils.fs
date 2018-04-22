@@ -16,7 +16,7 @@ module Utils =
   let creatUri str = Uri.TryCreate(str, UriKind.Absolute) |> tryToOption
 
   let extractQueryValueFromUri key (uri : Uri) = 
-    uri.Query.Split [|'&'; '='|] |>
+    uri.Query.TrimStart('?').Split [|'&'; '='|] |>
     Array.chunkBySize 2 |>
     Array.tryFind (fun pair -> pair.[0] = key) |>
     Option.bind (fun pair -> Some pair.[1])

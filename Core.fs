@@ -19,7 +19,7 @@ let processUpdate (update: Update) =
       | Some [|name; artist;|] -> Some { Artist = artist.Trim(); Track = name.Trim()  }
       | Some _ | None -> None
   
-  let parseAppleMusicLink str = Some { Artist = ""; Track = ""}
+  let parseAppleMusicLink str = None
 
   let parseGetRequest message = 
     [parseGoogleMusicLink; parseAppleMusicLink] 
