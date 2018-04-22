@@ -7,6 +7,7 @@ open Microsoft.AspNetCore.Mvc
 open Microsoft.Azure.WebJobs
 open Microsoft.Azure.WebJobs.Extensions.Http
 open Model
+open Telegram.Bot.Types
 
 module SearchLyrics = 
   ()
@@ -23,7 +24,7 @@ module GetLyrics =
   open Telegram
 
   [<FunctionName("GetLyrics")>]
-  let run ([<QueueTrigger("get-lyrics-requests")>] getLyricsReqData, log: TraceWriter) = 
+  let run ([<QueueTrigger("get-lyrics-requests")>] getLyricsReqData : Tuple<Int64, Song>, log: TraceWriter) = 
     log.Info "Get lyrics started."
     
     let (chatId, song) = getLyricsReqData
@@ -32,15 +33,14 @@ module GetLyrics =
       let! lyrics = getLyrics song
       
       return! lyrics |> function
-      | Some l -> telegramClient.SendTextMessageAsync(chatId, l) |> Async.AwaitTask 
+      | Some l -> telegramClient.SendTextMessageAsync(new ChatId(chatId), l) |> Async.AwaitTask 
       | None -> log.Error "Get lyrics failed."; new Exception("Something gone wrong.") |> raise
     
     } |> ignore
 
     log.Info "Get lyrics successed."
 
-module TelegramBotHook =  
-  open Telegram.Bot.Types
+module TelegramBotHook =
   open Core
   
   [<FunctionName("TelegramBotHook")>]
@@ -66,12 +66,12 @@ module Test =
   [<FunctionName("Test")>]
   let run
     ([<HttpTrigger(AuthorizationLevel.Anonymous, "post")>] req: string,  
-     [<Queue("get-lyrics-requests")>] getLyricsRequests: ICollector<Tuple<Song, Int64>>) = 
+     [<Queue("get-lyrics-requests")>] getLyricsRequests: ICollector<Tuple<Int64, Song>>) = 
   
     let song = req.Split('-') |> function
       | [|artist; track|] -> 
         let song = {Artist = artist; Track = track}
-        (song, Int64.MaxValue) |> getLyricsRequests.Add
+        (Int64.MaxValue, song) |> getLyricsRequests.Add
         Some song
       | _ -> None
 
