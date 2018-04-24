@@ -18,21 +18,24 @@ module Telegram =
   let telegramClient token =
     new TelegramBotClient(token)
 
+module Common = 
+  let config basePath = 
+    (new ConfigurationBuilder())
+      .SetBasePath(basePath)
+      .AddJsonFile("local.settings.json", true, true)
+      .AddEnvironmentVariables()
+      .Build()
+
 module GetLyrics = 
   open Grabbers
   open Telegram
+  open Common
 
   [<FunctionName("GetLyrics")>]
   let run ([<QueueTrigger("get-lyrics-requests")>] getLyricsReqData : Tuple<Int64, Song>, log: TraceWriter, context: ExecutionContext) = 
     log.Info "Get lyrics started."
     
-    let config = 
-      (new ConfigurationBuilder())
-        .SetBasePath(context.FunctionAppDirectory)
-        .AddJsonFile("local.settings.json", true, true)
-        .AddEnvironmentVariables()
-        .Build()
-
+    let config = config context.FunctionAppDirectory
     let telegramClient = telegramClient config.["telegramBotToken"] 
     let (chatId, song) = getLyricsReqData
     let songDescription = sprintf "song '%s' by artist '%s'" song.Track song.Artist
@@ -63,14 +66,14 @@ module GetLyrics =
     } |> ignore
     *)
 
-    log.Info "Get lyrics successed."
+    log.Info "Get lyrics succeeded."
 
 module TelegramBotHook =
   open Core
-  
+
   [<FunctionName("TelegramBotHook")>]
   let run 
-    ([<HttpTrigger(AuthorizationLevel.Anonymous, "post")>] update: Update, 
+    ([<HttpTrigger(AuthorizationLevel.Function, "post")>] update: Update, 
      [<Queue("search-lyrics-requests")>] searchLyricsRequests: ICollector<Tuple<Int64, string>>, 
      [<Queue("get-lyrics-requests")>] getLyricsRequests: ICollector<Tuple<Int64, Song>>, 
      log: TraceWriter) = 
@@ -82,7 +85,7 @@ module TelegramBotHook =
         match r with
         | GetLyrics r -> (update.Message.Chat.Id, r) |> getLyricsRequests.Add
         | SearchLyrics r -> (update.Message.Chat.Id, r) |> searchLyricsRequests.Add
-        log.Info "Process update successed."
+        log.Info "Process update succeeded."
       | _ -> log.Error "Process update failed."
 
 module Test =
