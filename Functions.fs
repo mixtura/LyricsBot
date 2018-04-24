@@ -1,7 +1,7 @@
 module LyricsBot.Functions
 
 open System
-open System.Configuration;
+open Microsoft.Extensions.Configuration;
 open Microsoft.Azure.WebJobs.Host
 open Microsoft.AspNetCore.Mvc
 open Microsoft.Azure.WebJobs
@@ -15,20 +15,44 @@ module SearchLyrics =
 module Telegram =
   open Telegram.Bot
 
-  let telegramClient =
-    let telegramBotToken = ConfigurationManager.AppSettings.["TelegramBotToken"]
-    new TelegramBotClient(telegramBotToken)
+  let telegramClient token =
+    new TelegramBotClient(token)
 
 module GetLyrics = 
   open Grabbers
   open Telegram
 
   [<FunctionName("GetLyrics")>]
-  let run ([<QueueTrigger("get-lyrics-requests")>] getLyricsReqData : Tuple<Int64, Song>, log: TraceWriter) = 
+  let run ([<QueueTrigger("get-lyrics-requests")>] getLyricsReqData : Tuple<Int64, Song>, log: TraceWriter, context: ExecutionContext) = 
     log.Info "Get lyrics started."
     
+    let config = 
+      (new ConfigurationBuilder())
+        .SetBasePath(context.FunctionAppDirectory)
+        .AddJsonFile("local.settings.json", true, true)
+        .AddEnvironmentVariables()
+        .Build()
+
+    let telegramClient = telegramClient config.["telegramBotToken"] 
     let (chatId, song) = getLyricsReqData
-        
+    let songDescription = sprintf "song '%s' by artist '%s'" song.Track song.Artist
+    let sendMessage body = 
+      telegramClient.SendTextMessageAsync(new ChatId(chatId), body) 
+      |> Async.AwaitTask 
+      |> Async.RunSynchronously 
+      |> ignore
+
+    song |> getLyrics |> Async.RunSynchronously |> function
+      | Some l -> sendMessage l
+      | None -> 
+        songDescription
+          |> sprintf "Get lyrics for %s failed."
+          |> log.Error
+        songDescription
+          |> sprintf "Lyrics for %s not found."  
+          |> sendMessage
+
+    (*
     async {
       let! lyrics = getLyrics song
       
@@ -37,6 +61,7 @@ module GetLyrics =
       | None -> log.Error "Get lyrics failed."; new Exception("Something gone wrong.") |> raise
     
     } |> ignore
+    *)
 
     log.Info "Get lyrics successed."
 

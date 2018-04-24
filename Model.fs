@@ -8,3 +8,5 @@ type Song = {
 type Request = 
   | GetLyrics of Song 
   | SearchLyrics of string 
+
+  

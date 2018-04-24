@@ -6,8 +6,8 @@ open Telegram.Bot.Types
 open Telegram.Bot.Types.Enums
 
 let processUpdate (update: Update) =
-  let extractLink (str:string) = 
-    str.Split ' ' 
+  let extractLink (str:string) =
+    str.Split [|' '; '\n'; '\t'|] 
     |> Array.tryFind (fun x -> x.StartsWith "http://" || x.StartsWith "https://")
 
   let parseGoogleMusicLink str = 
