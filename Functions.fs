@@ -9,64 +9,78 @@ open Microsoft.Azure.WebJobs.Extensions.Http
 open Model
 open Telegram.Bot.Types
 
-module SearchLyrics = 
-  ()
-
 module Telegram =
   open Telegram.Bot
 
-  let telegramClient token =
+  let telegramClient (context: ExecutionContext) =
+    let config = 
+      (new ConfigurationBuilder())
+        .SetBasePath(context.FunctionAppDirectory)
+        .AddJsonFile("local.settings.json", true, true)
+        .AddEnvironmentVariables()
+        .Build()
+    
+    let token = config.["telegramBotToken"]
+
     new TelegramBotClient(token)
 
-module Common = 
-  let config basePath = 
-    (new ConfigurationBuilder())
-      .SetBasePath(basePath)
-      .AddJsonFile("local.settings.json", true, true)
-      .AddEnvironmentVariables()
-      .Build()
+  let sendTextMessage (client: TelegramBotClient) (chatId: Int64) body = 
+    client.SendTextMessageAsync(new ChatId(chatId), body) 
+    |> Async.AwaitTask 
+    |> Async.RunSynchronously 
+    |> ignore
+
+module SearchLyrics = 
+  open Telegram
+  open Grabbers
+
+  [<FunctionName("SearchLyrics")>]
+  let run
+    ([<QueueTrigger("search-lyrics-requests")>] searchLyricsReqData, 
+     log: TraceWriter, 
+     context: ExecutionContext) =
+     
+    log.Info "Search lyrics started."
+
+    let (chatId, query) = searchLyricsReqData
+    let telegramClient = telegramClient context
+    let sendTextMessage = sendTextMessage telegramClient chatId
+    let lyrics = searchLyrics query |> Async.RunSynchronously
+
+    match lyrics with
+      | Some l -> sendTextMessage l; log.Info "Search lyrics succeeded"
+      | None -> log.Error "Search lyrics failed."; 
+
+    log.Info "Search lyrics completed."
 
 module GetLyrics = 
   open Grabbers
   open Telegram
-  open Common
 
   [<FunctionName("GetLyrics")>]
-  let run ([<QueueTrigger("get-lyrics-requests")>] getLyricsReqData : Tuple<Int64, Song>, log: TraceWriter, context: ExecutionContext) = 
-    log.Info "Get lyrics started."
+  let run 
+    ([<QueueTrigger("get-lyrics-requests")>] getLyricsReqData, 
+     log: TraceWriter, 
+     context: ExecutionContext) = 
     
-    let config = config context.FunctionAppDirectory
-    let telegramClient = telegramClient config.["telegramBotToken"] 
+    log.Info "Get lyrics started."
+
     let (chatId, song) = getLyricsReqData
     let songDescription = sprintf "song '%s' by artist '%s'" song.Track song.Artist
-    let sendMessage body = 
-      telegramClient.SendTextMessageAsync(new ChatId(chatId), body) 
-      |> Async.AwaitTask 
-      |> Async.RunSynchronously 
-      |> ignore
+    let telegramClient = telegramClient context
+    let sendTextMessage = sendTextMessage telegramClient chatId
 
     song |> getLyrics |> Async.RunSynchronously |> function
-      | Some l -> sendMessage l
+      | Some lyrics -> sendTextMessage lyrics
       | None -> 
         songDescription
           |> sprintf "Get lyrics for %s failed."
           |> log.Error
         songDescription
           |> sprintf "Lyrics for %s not found."  
-          |> sendMessage
+          |> sendTextMessage
 
-    (*
-    async {
-      let! lyrics = getLyrics song
-      
-      return! lyrics |> function
-      | Some l -> telegramClient.SendTextMessageAsync(new ChatId(chatId), l) |> Async.AwaitTask 
-      | None -> log.Error "Get lyrics failed."; new Exception("Something gone wrong.") |> raise
-    
-    } |> ignore
-    *)
-
-    log.Info "Get lyrics succeeded."
+    log.Info "Get lyrics completed."
 
 module TelegramBotHook =
   open Core
@@ -74,8 +88,8 @@ module TelegramBotHook =
   [<FunctionName("TelegramBotHook")>]
   let run 
     ([<HttpTrigger(AuthorizationLevel.Function, "post")>] update: Update, 
-     [<Queue("search-lyrics-requests")>] searchLyricsRequests: ICollector<Tuple<Int64, string>>, 
-     [<Queue("get-lyrics-requests")>] getLyricsRequests: ICollector<Tuple<Int64, Song>>, 
+     [<Queue("search-lyrics-requests")>] searchLyricsRequests: ICollector<Int64 * string>, 
+     [<Queue("get-lyrics-requests")>] getLyricsRequests: ICollector<Int64 * Song>, 
      log: TraceWriter) = 
     
     log.Info "Process update started."
@@ -93,9 +107,13 @@ module Test =
 
   [<FunctionName("Test")>]
   let run
-    ([<HttpTrigger(AuthorizationLevel.Anonymous, "post")>] req: string,  
-     [<Queue("get-lyrics-requests")>] getLyricsRequests: ICollector<Tuple<Int64, Song>>) = 
+    ([<HttpTrigger(AuthorizationLevel.Function, "post")>] req: string,  
+     [<Queue("get-lyrics-requests")>] getLyricsRequests: ICollector<Int64 * Song>) = 
   
+    let foundLyrics = searchLyrics req |> Async.RunSynchronously |> function
+      | Some l -> l
+      | None -> "none"
+
     let song = req.Split('-') |> function
       | [|artist; track|] -> 
         let song = {Artist = artist; Track = track}
