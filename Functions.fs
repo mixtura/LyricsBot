@@ -32,7 +32,7 @@ module Telegram =
 
 module SearchLyrics = 
   open Telegram
-  open Grabbers
+  open Grabbers.AZLyrics
 
   [<FunctionName("SearchLyrics")>]
   let run
@@ -45,42 +45,39 @@ module SearchLyrics =
     let (chatId, query) = searchLyricsReqData
     let telegramClient = telegramClient context
     let sendTextMessage = sendTextMessage telegramClient chatId
-    let lyrics = searchLyrics query |> Async.RunSynchronously
+    let lyrics = searchLyrics query
 
     match lyrics with
       | Some l -> sendTextMessage l; log.Info "Search lyrics succeeded"
-      | None -> log.Error "Search lyrics failed."; 
-
-    log.Info "Search lyrics completed."
+      | None -> log.Error "Search lyrics failed.";
 
 module GetLyrics = 
-  open Grabbers
+  open Grabbers.WikiaLyrics
   open Telegram
 
   [<FunctionName("GetLyrics")>]
   let run 
     ([<QueueTrigger("get-lyrics-requests")>] getLyricsReqData, 
+     [<Queue("search-lyrics-requests")>] searchLyricsRequests: ICollector<Int64 * string>, 
      log: TraceWriter, 
      context: ExecutionContext) = 
     
     log.Info "Get lyrics started."
 
     let (chatId, song) = getLyricsReqData
-    let songDescription = sprintf "song '%s' by artist '%s'" song.Track song.Artist
+    let songDescription = sprintf "%s - %s" song.Track song.Artist
     let telegramClient = telegramClient context
     let sendTextMessage = sendTextMessage telegramClient chatId
 
     song |> getLyrics |> Async.RunSynchronously |> function
-      | Some lyrics -> sendTextMessage lyrics
+      | Some lyrics -> sendTextMessage lyrics; log.Info "Get lyrics succeeded."
       | None -> 
-        songDescription
-          |> sprintf "Get lyrics for %s failed."
-          |> log.Error
-        songDescription
-          |> sprintf "Lyrics for %s not found."  
-          |> sendTextMessage
+        sprintf 
+          "Attempt to get lyrics for song '%s' directly failed." 
+          songDescription
+        |> log.Error
 
-    log.Info "Get lyrics completed."
+        (chatId, songDescription) |> searchLyricsRequests.Add
 
 module TelegramBotHook =
   open Core
@@ -92,25 +89,26 @@ module TelegramBotHook =
      [<Queue("get-lyrics-requests")>] getLyricsRequests: ICollector<Int64 * Song>, 
      log: TraceWriter) = 
     
-    log.Info "Process update started."
+    log.Info "Telegram bot hook started."
 
     processUpdate update |> function
       | Some r -> 
         match r with
         | GetLyrics r -> (update.Message.Chat.Id, r) |> getLyricsRequests.Add
         | SearchLyrics r -> (update.Message.Chat.Id, r) |> searchLyricsRequests.Add
-        log.Info "Process update succeeded."
-      | _ -> log.Error "Process update failed."
+        log.Info "Telegram bot hook succeeded."
+      | _ -> log.Error "Telegram bot hook failed."
 
 module Test =
-  open Grabbers
+  open Grabbers.AZLyrics
+  open Grabbers.WikiaLyrics
 
   [<FunctionName("Test")>]
   let run
     ([<HttpTrigger(AuthorizationLevel.Function, "post")>] req: string,  
      [<Queue("get-lyrics-requests")>] getLyricsRequests: ICollector<Int64 * Song>) = 
   
-    let foundLyrics = searchLyrics req |> Async.RunSynchronously |> function
+    let foundLyrics = searchLyrics req |> function
       | Some l -> l
       | None -> "none"
 
