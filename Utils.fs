@@ -13,7 +13,7 @@ module Utils =
     | (true, uri) -> Some uri
     | (false, _) -> None
 
-  let creatUri str = Uri.TryCreate(str, UriKind.Absolute) |> tryToOption
+  let createUri str = Uri.TryCreate(str, UriKind.Absolute) |> tryToOption
 
   let extractQueryValueFromUri key (uri : Uri) = 
     uri.Query.TrimStart('?').Split [|'&'; '='|] |>

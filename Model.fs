@@ -1,12 +1,9 @@
 module LyricsBot.Model
+open System
 
-type Song = {
-  Artist: string;
-  Track: string;
-}
+type SongName = { Artist:string; Track:string }
 
-type Request = 
-  | GetLyrics of Song 
-  | SearchLyrics of string 
-
-  
+type ParsedMessage = 
+  | GMLink of Uri
+  | ItunesLink of Uri 
+  | SearchLyricsQuery of string
