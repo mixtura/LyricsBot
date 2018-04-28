@@ -3,9 +3,9 @@ module LyricsBot.Grabbers
 open System
 open Utils
 open LyricsBot.Model
+open HtmlAgilityPack
 
-module private HtmlAgilityWrappers = 
-  open HtmlAgilityPack
+module private HtmlAgilityWrappers =
 
   let loadDoc (url: Uri) = try (new HtmlWeb()).Load(url) |> Some with | _ -> None
 
@@ -28,12 +28,12 @@ module AZLyrics =
     
     // auto-generated with Chrome Developer Tools
     let lyricsSelector = "/html/body/div[3]/div/div[2]/div[5]"
-    let lyricsFirstSearchResultSelector = "/html/body/div[2]/div/div/div/table/tr[2]/td/a"
+    let lyricsSearchResultSelector = "//*[@class='text-left visitedlyr']/a"
     
     searchLyricsLink
     |> createUri 
     |> Option.bind loadDoc 
-    |> Option.bind (extractFirstNode lyricsFirstSearchResultSelector)
+    |> Option.bind (extractFirstNode lyricsSearchResultSelector)
     |> Option.bind (extractAttr "href")
     |> Option.bind createUri
     |> Option.bind loadDoc
@@ -82,10 +82,15 @@ module GoggleMusic =
       |> Option.bind ( (+) "https://play.google.com"  >> createUri)
       |> Option.bind loadDoc
     
+    let extractLyrics = 
+      List.ofSeq
+      >> List.map (fun (node: HtmlNode) -> node.InnerHtml.Replace("<br>", "\n")) 
+      >> String.concat "\n"
+
     let lyrics = 
       doc
       |> Option.bind(extractAllNodes lyricsParagraphsSelector)
-      |> Option.map (List.ofSeq >> List.map (fun node -> node.InnerHtml.Replace("<br>", "\n")) >> String.concat "\n")
+      |> Option.map (extractLyrics)
 
     let song = 
       let track =

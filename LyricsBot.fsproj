@@ -1,18 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <FSharpCoreImplicitPackageVersion>4.2.*</FSharpCoreImplicitPackageVersion>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Model.fs" />
     <Compile Include="Utils.fs" />
     <Compile Include="Grabbers.fs" />
-    <Compile Include="TelegramUtils.fs" />
+    <Compile Include="Telegram.fs" />
     <Compile Include="Core.fs" />
     <Content Include="*.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Compile Include="Functions/Functions.fs" />
-    <Compile Include="Functions/TestFunctions.fs" />
+    <Compile Include="Functions/Test.fs" />
+    <Compile Include="Functions/TelegramWebHook.fs" />
+    <Compile Include="Functions/ProcessGMLink.fs" />
+    <Compile Include="Functions/ProcessSearchQuery.fs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Core" Version="2.0.0" />
