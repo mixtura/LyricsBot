@@ -84,7 +84,8 @@ module GoggleMusic =
     
     let extractLyrics = 
       List.ofSeq
-      >> List.map (fun (node: HtmlNode) -> node.InnerHtml.Replace("<br>", "\n")) 
+      >> List.map (fun (node: HtmlNode) -> node.InnerHtml )
+      >> List.map (fun p -> p.Replace("<br>", "\n") |> HtmlEntity.DeEntitize) 
       >> String.concat "\n"
 
     let lyrics = 
