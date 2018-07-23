@@ -1,113 +1,117 @@
 module LyricsBot.Grabbers
 
-open System
 open Utils
 open LyricsBot.Model
 open HtmlAgilityPack
 
-module private HtmlAgilityWrappers =
-
-  let loadDoc (url: Uri) = try (new HtmlWeb()).Load(url) |> Some with | _ -> None
-
-  let extractFirstNode (selector: string) (doc: HtmlDocument) =       
-    try doc.DocumentNode.SelectSingleNode(selector) |> Option.ofObj with | _ -> None
-
-  let extractAllNodes (selector: string) (doc: HtmlDocument) =
-    try doc.DocumentNode.SelectNodes(selector) |> Option.ofObj with | _ -> None 
-
-  let extractAttr attrName (node: HtmlNode) =
-    node.GetAttributeValue(attrName, "")
-    |> Some
-    |> Option.bind (function | "" -> None | x -> Some x)
-
-module AZLyrics =
-  open HtmlAgilityWrappers
-  
-  let searchLyrics query =
-    let searchLyricsLink = sprintf "https://search.azlyrics.com/search.php?q=%s&w=songs" query
-    
-    // auto-generated with Chrome Developer Tools
+// Auto-generated xpath selectors
+module private Selectors = 
+  module AZ =
     let lyricsSelector = "/html/body/div[3]/div/div[2]/div[5]"
     let lyricsSearchResultSelector = "//*[@class='text-left visitedlyr']/a"
-    
-    searchLyricsLink
-    |> createUri 
-    |> Option.bind loadDoc 
-    |> Option.bind (extractFirstNode lyricsSearchResultSelector)
-    |> Option.bind (extractAttr "href")
-    |> Option.bind createUri
-    |> Option.bind loadDoc
-    |> Option.bind (extractFirstNode lyricsSelector)
-    |> Option.map (fun node -> node.InnerText)
+    let songNameSelector = "/html/body/div[3]/div/div[2]/b"
+    let artistNameSelector = "/html/body/div[3]/div/div[2]/div[3]/h2/b"
 
-module WikiaLyrics =
-  open HtmlAgilityWrappers
-  
-  let getLyrics song = 
-
-    let getLyricsLink {Artist = artist; Track = track} = 
-        sprintf "http://lyrics.wikia.com/wiki/%s:%s" artist track 
-
-    let lyricsSelector = "//*[@id='mw-content-text']/div[7]"
-    
-    getLyricsLink song 
-    |> createUri 
-    |> Option.bind loadDoc 
-    |> Option.bind (extractFirstNode lyricsSelector) 
-    |> Option.map (fun node -> node.InnerText)
-
-module GoggleMusic = 
-  open HtmlAgilityWrappers
-
-  type GMResult = 
-    | Lyrics of song: SongName * string
-    | SongName of song: SongName
-  
-  let extractSongName googlePlayLink = 
-    extractQueryValueFromUri "t" googlePlayLink
-  
-  let getLyrics gmLink =
-
-    // Auto-generated with Chrome Developer Tools
+  module GM =
     let lyricsParagraphsSelector = "//*[@id='main-content-container']/div/p"
     let trackNameSelector = "//*[@id='main-content-container']/div[1]/div/div/div[1]/a"
     let artistNameSelector = "//*[@id='main-content-container']/div[1]/div/div/div[2]/a"
     let redirectLinkSelector = "/html/body/a"
 
-    let doc = 
-      gmLink 
-      |> loadDoc
-      |> Option.bind (extractFirstNode redirectLinkSelector)
-      |> Option.bind (extractAttr "href")
-      |> Option.bind ( (+) "https://play.google.com"  >> createUri)
-      |> Option.bind loadDoc
-    
-    let extractLyrics = 
-      List.ofSeq
-      >> List.map (fun (node: HtmlNode) -> node.InnerHtml )
-      >> List.map (fun p -> p.Replace("<br>", "\n") |> HtmlEntity.DeEntitize) 
-      >> String.concat "\n"
+  module Itunes =    
+    let trackNameSelector = "//*[@class='table__row popularity-star we-selectable-item is-active is-available we-selectable-item--allows-interaction ember-view']/td[2]/div/div/div";
+    let artistNameSelector = "//*[@class='product-header__identity']/a";
 
-    let lyrics = 
-      doc
-      |> Option.bind(extractAllNodes lyricsParagraphsSelector)
-      |> Option.map (extractLyrics)
+module Common =
+  let combineSongResult extractArtist extractTrack lyricsPageDoc = 
+    match extractArtist lyricsPageDoc with
+    | Ok(artist) -> 
+      match extractTrack lyricsPageDoc with
+      | Ok(track) -> Ok {Track = track; Artist = artist}
+      | Error msg  -> Error msg
+    | Error msg -> Error msg 
 
-    let song = 
-      let track =
-        doc
-        |> Option.bind(extractFirstNode trackNameSelector)
-        |> Option.map (fun node -> node.InnerText)
-    
-      let artist =
-        doc 
-        |> Option.bind(extractFirstNode artistNameSelector)
-        |> Option.map (fun node -> node.InnerText)
-      
-      Option.map2 
-        (fun track artist -> {Track = track; Artist = artist}) 
-        track artist
+module AZLyrics =
+  open HtmlAgilityWrappers
 
-    (lyrics, song)
-    ||> Option.map2 (fun song lyrics -> Lyrics (lyrics, song))
-    |> Option.orElse (Option.map SongName song)
+  let createSearchLyricsUrl = 
+    sprintf "https://search.azlyrics.com/search.php?q=%s&w=songs"
+    >> createUri
+    >> optionToResult "Can't create url for azlyrics."
+  
+  let getFirstSearchResultLink lyricsPageDoc = 
+    lyricsPageDoc
+    |> extractFirstNode Selectors.AZ.lyricsSearchResultSelector 
+    |> optionToResult "Can't extract search result from azlyrics search page."
+    |> Result.bind (extractAttr "href" >> optionToResult "Can't extract href attribute from azlyrics search result.")
+    |> Result.bind (createUri >> optionToResult "Can't create link to azlyrics lyrics page.")
+
+  let extractArtist lyricsPageDoc =
+    lyricsPageDoc 
+    |> extractFirstNode Selectors.AZ.artistNameSelector 
+    |> optionToResult "Can't extract artist name from azlyrics lyrics page."
+    |> Result.map (fun n -> n.InnerText)
+
+  let extractTrack lyricsPageDoc =        
+    lyricsPageDoc 
+    |> extractFirstNode Selectors.AZ.songNameSelector 
+    |> optionToResult "Can't extract track name from azlyrics lyrics page."
+    |> Result.map (fun n -> n.InnerText.Replace("Lyrics", "").Trim('"'))
+
+  let extractLyrics lyricsPageDoc=
+    lyricsPageDoc
+    |> extractFirstNode Selectors.AZ.lyricsSelector 
+    |> optionToResult "Can't extract lyrics from azlyrics lyrics page."
+    |> Result.map (fun node -> node.InnerText)
+
+module GoggleMusic = 
+  open HtmlAgilityWrappers
+ 
+  let extractSongName googlePlayLink = 
+    extractQueryValueFromUri "t" googlePlayLink
+  
+  let getRedirectLink doc = 
+    doc
+    |> extractFirstNode Selectors.GM.redirectLinkSelector 
+    |> optionToResult "Can't extract redirect link from GM lyrics page."
+    |> Result.bind (extractAttr "href" >> optionToResult "Can't extract href attribute from GM redirect link.")
+    |> Result.bind ( (+) "https://play.google.com"  >> createUri >> optionToResult "Can't create GM link.")
+
+  let extractLyricsText = 
+    List.ofSeq
+    >> List.map (fun (node: HtmlNode) -> node.InnerHtml )
+    >> List.map (fun p -> p.Replace("<br>", "\n") |> HtmlEntity.DeEntitize) 
+    >> String.concat "\n"
+
+  let extractLyrics lyricsPageDoc = 
+    lyricsPageDoc
+    |> extractAllNodes Selectors.GM.lyricsParagraphsSelector 
+    |> optionToResult "Can't extract lyrics from GM page."
+    |> Result.map (extractLyricsText)
+
+  let extractTrack lyricsPageDoc =
+    lyricsPageDoc
+    |> extractFirstNode Selectors.GM.trackNameSelector 
+    |> optionToResult "Can't extract track name from GM page."
+    |> Result.map (fun node -> node.InnerText)
+
+  let extractArtist lyricsPageDoc =
+    lyricsPageDoc 
+    |> extractFirstNode Selectors.GM.artistNameSelector 
+    |> optionToResult "Can't extract artist name from GM page."
+    |> Result.map (fun node -> node.InnerText)
+
+module Itunes = 
+  open HtmlAgilityWrappers
+
+  let extractTrack itunesPageDoc = 
+    itunesPageDoc 
+    |> extractFirstNode Selectors.Itunes.trackNameSelector 
+    |> optionToResult "Can't extract track from Itunes song page." 
+    |> Result.map(fun node -> node.InnerText)
+  
+  let extractArtist itunesPageDoc = 
+    itunesPageDoc 
+    |> extractFirstNode  Selectors.Itunes.artistNameSelector 
+    |> optionToResult "Can't extract artist from Itunes song page." 
+    |> Result.map(fun node -> node.InnerText)
