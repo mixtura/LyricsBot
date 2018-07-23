@@ -2,24 +2,31 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": ".NET Core Attach",
+      "type": "coreclr",
+      "request": "attach",
+      "processId": "${command:pickRemoteProcess}",
+      "pipeTransport": {
+        "pipeCwd": "${workspaceRoot}",
+        "pipeProgram": "enter the fully qualified path for the pipe program name, for example '/usr/bin/ssh'",
+        "pipeArgs": [],
+        "debuggerPath": "enter the path for the debugger on the target machine, for example ~/vsdbg/vsdbg"
+      }
+    },
+    {
       "name": ".NET Core Launch (console)",
       "type": "coreclr",
-      "request": "launch",
-      "port": 0,
-      "processId": null
+      "request": "launch"
     },
     {
       "name": ".NET Core Launch (web)",
       "type": "coreclr",
-      "request": "launch",
-      "port": 0,
-      "processId": null
+      "request": "launch"
     },
     {
       "name": ".NET Core Attach",
       "type": "coreclr",
       "request": "attach",
-      "port": 0,
       "processId": "${command:pickProcess}"
     }
   ]

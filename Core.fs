@@ -2,41 +2,43 @@ module LyricsBot.Core
 
 open Utils
 open Model
-open Telegram.Bot.Types  
-open Telegram.Bot.Types.Enums
+open System
 
-let processUpdate (update: Update) =
-  let extractLink (str:string) =
-    str.Split [|' '; '\n'; '\t'|] 
-    |> Array.tryFind (fun x -> x.StartsWith "http://" || x.StartsWith "https://")
+let printResponse response =
+  match response with
+  | LyricsFound (song, lyrics) ->  
+    let songNameAsString {Artist = artist; Track = track} = 
+      sprintf "%s - %s" artist track
+    
+    sprintf "%s \n\n %s" (songNameAsString song) lyrics
+  | ErrorOccured err -> "error happened"
+  | NotFound -> "lyrics not found"
 
-  let parseGoogleMusicLink str = 
-    Option.bind creatUri str 
-    |> Option.filter (fun uri -> uri.Host.Equals "play.google.com") 
-    |> Option.bind (extractQueryValueFromUri "t") 
-    |> Option.bind (fun query -> query.Replace('_', ' ').Split('-') |> Some) 
-    |> function
-      | Some [|name; artist;|] -> Some { Artist = artist.Trim(); Track = name.Trim()  }
-      | Some _ | None -> None
-  
-  let parseAppleMusicLink str = None
+let parseMessage message =
+  let extractLinks (str:string) =
+    str.Split [|' '; '\n'; '\t'|]
+    |> List.ofArray 
+    |> List.filter (fun x -> x.StartsWith "http://" || x.StartsWith "https://")
+    |> List.map createUri
+    |> List.filter Option.isSome
+    |> List.map Option.get
 
-  let parseGetRequest message = 
-    [parseGoogleMusicLink; parseAppleMusicLink] 
-    |> List.map (fun f -> fun _ -> extractLink message |> f)
-    |> firstSome
-    |> Option.map GetLyrics
+  let links = extractLinks message
 
-  let parseSearchRequest message = SearchLyrics message |> Some
+  let tryFindLinkByHost hostName (links: Uri list) = 
+    links |> List.tryFind (fun uri -> uri.Host.Equals hostName)
 
-  let (|MessageUpdate|_|) (u: Update) = 
-    if u.Type = UpdateType.Message 
-    then Some u.Message
-    else None
+  let tryFindGMLink (links : Uri list) = 
+    links 
+    |> tryFindLinkByHost "play.google.com"
+    |> Option.map GMLink
 
-  match update with
-    | MessageUpdate(message) ->
-      [parseGetRequest; parseSearchRequest]
-        |> List.map (fun x -> fun _ -> x message.Text)
-        |> firstSome
-    | _ -> None
+  let tryFindItunesLink (links : Uri list) = 
+    links
+    |> tryFindLinkByHost "itunes.apple.com"
+    |> Option.map ItunesLink
+
+  [tryFindGMLink; tryFindItunesLink;]
+  |> List.map (fun f -> fun _ -> links |> f)
+  |> firstSome
+  |> Option.orElse(SearchLyricsQuery message |> Some)
