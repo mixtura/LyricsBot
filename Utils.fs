@@ -8,12 +8,17 @@ module Utils =
     | x::xs -> Option.orElseWith (fun _ -> firstSome xs) (x())
     | [] -> None
 
-  let tryToOption result = 
-    match result with 
+  let tryToOption = function 
     | (true, uri) -> Some uri
     | (false, _) -> None
 
-  let createUri str = Uri.TryCreate(str, UriKind.Absolute) |> tryToOption
+  let tryToResult error = function
+    | (true, uri) -> Ok uri
+    | (false, _) -> Error error
+
+  let createUri str = 
+    Uri.TryCreate(str, UriKind.Absolute) 
+    |> tryToResult (sprintf "Can't create url from string: %s" str)
 
   let optionToResult error op = 
     match op with
@@ -28,16 +33,16 @@ module Utils =
       | Error msg  -> Error msg 
     | Error msg  -> Error msg  
 
-  let getError resList =
-    let rec getError' resList previousErr = 
+  let aggregateErrors resList =
+    let rec aggregateErrors' resList previousErr = 
       match resList with
       | [] -> previousErr
       | x::xs -> 
         match x with 
-        | Result.Error err -> getError' xs (sprintf "%s,%s" err previousErr) 
-        | Ok _ -> getError' xs previousErr
+        | Result.Error err -> aggregateErrors' xs (sprintf "%s,%s" err previousErr) 
+        | Ok _ -> aggregateErrors' xs previousErr
 
-    getError' resList ""
+    aggregateErrors' resList ""
 
   let extractQueryValueFromUri key (uri : Uri) = 
     uri.Query.TrimStart('?').Split [|'&'; '='|] |>

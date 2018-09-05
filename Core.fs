@@ -3,6 +3,7 @@ module LyricsBot.Core
 open Utils
 open Model
 open System
+open System
 
 let printResponse response =
   match response with
@@ -11,8 +12,7 @@ let printResponse response =
       sprintf "%s - %s" artist track
     
     sprintf "%s \n\n %s" (songNameAsString song) lyrics
-  | ErrorOccured err -> "error happened"
-  | NotFound -> "lyrics not found"
+  | LyricsNotFound -> "lyrics not found"
 
 let parseMessage message =
   let extractLinks (str:string) =
@@ -20,25 +20,27 @@ let parseMessage message =
     |> List.ofArray 
     |> List.filter (fun x -> x.StartsWith "http://" || x.StartsWith "https://")
     |> List.map createUri
-    |> List.filter Option.isSome
-    |> List.map Option.get
 
-  let links = extractLinks message
-
-  let tryFindLinkByHost hostName (links: Uri list) = 
-    links |> List.tryFind (fun uri -> uri.Host.Equals hostName)
-
-  let tryFindGMLink (links : Uri list) = 
+  let tryFindLinkByHost hostName (links: Result<Uri, string> list) = 
     links 
-    |> tryFindLinkByHost "play.google.com"
-    |> Option.map GMLink
+    |> List.tryFind (function | Ok uri -> uri.Host.Equals hostName | _ -> false) 
+    |> function 
+      | Some(Ok uri) -> Some uri 
+      | _ -> None
 
-  let tryFindItunesLink (links : Uri list) = 
-    links
-    |> tryFindLinkByHost "itunes.apple.com"
-    |> Option.map ItunesLink
+  let tryFindGMLink = 
+    tryFindLinkByHost "play.google.com"
+    >> Option.map GMLink
 
-  [tryFindGMLink; tryFindItunesLink;]
-  |> List.map (fun f -> fun _ -> links |> f)
-  |> firstSome
-  |> Option.orElse(SearchLyricsQuery message |> Some)
+  let tryFindItunesLink = 
+    tryFindLinkByHost "itunes.apple.com"
+    >> Option.map ItunesLink
+
+  let rec tryFindLink linkFinders links =
+    match linkFinders with
+    | [] -> SearchLyricsQuery message |> Some
+    | f::rest -> f links |> function 
+      | Some v -> Some v 
+      | None -> tryFindLink rest links
+
+  extractLinks message |> tryFindLink [tryFindGMLink; tryFindItunesLink;]

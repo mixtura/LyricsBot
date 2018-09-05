@@ -8,6 +8,7 @@ open LyricsBot.Telegram
 open LyricsBot.Grabbers.GoggleMusic
 open LyricsBot
 open LyricsBot.HtmlAgilityWrappers
+open LyricsBot.Utils
 
 [<FunctionName("ProcessGoogleMusicLink")>]
 let run 
@@ -23,17 +24,14 @@ let run
 
   let addSearchRequest artist track = searchLyricsRequests.Add(chatId, {Artist = artist; Track = track } |> toQuery)
   let sendMessage = Core.printResponse >> sendTextMessage telegramClient chatId
-  let onError err = 
-    ErrorOccured err |> sendMessage
-    log.Error err
 
   loadDoc url 
   |> Result.bind(getRedirectLink)
   |> Result.bind(loadDoc)
   |> Result.map(fun doc -> (extractArtist doc, extractTrack doc, extractLyrics doc))
   |> function
-    | Ok (Ok artist, Ok track, lyrics) -> 
-      match lyrics with
+    | Ok (Ok artist, Ok track, lyricsRes) -> 
+      match lyricsRes with
       | Ok lyrics -> 
         LyricsFound ({Artist = artist; Track = track}, lyrics) |> sendMessage
         log.Info "Lyrics found on GM."
@@ -41,7 +39,11 @@ let run
         addSearchRequest artist track
         log.Error err
         log.Info "Search request added."
-    | Ok (artist, track, lyrics) -> Utils.getError [artist; track; lyrics] |> onError
-    | Error err -> onError err
+    | hasError -> 
+      sendMessage LyricsNotFound
+      match hasError with
+        | Ok (artistRes, trackRes, lyricsRes) -> aggregateErrors [artistRes; trackRes; lyricsRes]
+        | Error err -> err
+      |> log.Error
 
   log.Info "ProcessGMLinkRequest completed."

@@ -8,10 +8,10 @@ let loadDoc (url: Uri) =
   with | _ -> sprintf "Can't load document by url %s" url.AbsoluteUri |> Error
 
 let extractFirstNode (selector: string) (doc: HtmlDocument) =       
-  try doc.DocumentNode.SelectSingleNode(selector) |> Option.ofObj with | _ -> None
+  doc.DocumentNode.SelectSingleNode(selector) |> Option.ofObj
 
 let extractAllNodes (selector: string) (doc: HtmlDocument) =
-  try doc.DocumentNode.SelectNodes(selector) |> Option.ofObj with | _ -> None 
+  doc.DocumentNode.SelectNodes(selector) |> Option.ofObj 
 
 let extractAttr attrName (node: HtmlNode) =
   node.GetAttributeValue(attrName, "")

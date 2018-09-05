@@ -24,17 +24,14 @@ module private Selectors =
 module AZLyrics =
   open HtmlAgilityWrappers
 
-  let createSearchLyricsUrl = 
-    sprintf "https://search.azlyrics.com/search.php?q=%s&w=songs"
-    >> createUri
-    >> optionToResult "Can't create url for azlyrics."
-  
+  let createSearchLyricsUrl = sprintf "https://search.azlyrics.com/search.php?q=%s&w=songs" >> createUri
+
   let getFirstSearchResultLink lyricsPageDoc = 
     lyricsPageDoc
     |> extractFirstNode Selectors.AZ.lyricsSearchResultSelector 
     |> optionToResult "Can't extract search result from azlyrics search page."
     |> Result.bind (extractAttr "href" >> optionToResult "Can't extract href attribute from azlyrics search result.")
-    |> Result.bind (createUri >> optionToResult "Can't create link to azlyrics lyrics page.")
+    |> Result.bind (createUri)
 
   let extractArtist lyricsPageDoc =
     lyricsPageDoc 
@@ -65,7 +62,7 @@ module GoggleMusic =
     |> extractFirstNode Selectors.GM.redirectLinkSelector 
     |> optionToResult "Can't extract redirect link from GM lyrics page."
     |> Result.bind (extractAttr "href" >> optionToResult "Can't extract href attribute from GM redirect link.")
-    |> Result.bind ( (+) "https://play.google.com"  >> createUri >> optionToResult "Can't create GM link.")
+    |> Result.bind ( (+) "https://play.google.com"  >> createUri)
 
   let extractLyricsText = 
     List.ofSeq

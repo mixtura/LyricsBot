@@ -6,8 +6,7 @@ type SongName = { Artist:string; Track:string }
 
 type Response = 
   | LyricsFound of SongName * string
-  | ErrorOccured of err: string 
-  | NotFound
+  | LyricsNotFound
 
 type ParsedMessage = 
   | GMLink of Uri

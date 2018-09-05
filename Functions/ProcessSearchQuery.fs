@@ -17,7 +17,7 @@ let run
 
   let (chatId, query) = searchLyricsReqData
   let telegramClient = telegramClient context
-  let sendLyrics = sendTextMessage telegramClient chatId
+  let sendTextMessage = sendTextMessage telegramClient chatId
 
   sprintf "ProcessSearchQuery started. ChatId: %d; Query: %s." chatId query |> log.Info
   
@@ -27,10 +27,14 @@ let run
   |> Result.bind(loadDoc)
   |> Result.map(fun doc -> (extractLyrics doc, extractArtist doc, extractTrack doc))
   |> function 
-    | Ok (Ok lyrics, Ok artist, Ok track) -> LyricsFound ({Artist = artist; Track = track }, lyrics)  
-    | Ok (lyrics, artist, track) -> getError [lyrics; artist; track] |> ErrorOccured 
-    | Result.Error err -> ErrorOccured err
+    | Ok (Ok lyrics, Ok artist, Ok track) -> LyricsFound ({Artist = artist; Track = track }, lyrics)
+    | hasError -> 
+      match hasError with  
+        | Ok (lyricsRes, artistRes, trackRes) -> aggregateErrors [lyricsRes; artistRes; trackRes] 
+        | Error err -> err
+      |> log.Error
+      LyricsNotFound
   |> printResponse
-  |> sendLyrics
+  |> sendTextMessage
 
   log.Info "ProcessSearchQuery ended."

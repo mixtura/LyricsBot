@@ -8,6 +8,7 @@ open LyricsBot.Telegram
 open LyricsBot.Grabbers.Itunes
 open LyricsBot
 open LyricsBot.HtmlAgilityWrappers
+open LyricsBot.Utils
 
 [<FunctionName("ProcessItunesLink")>]
 let run 
@@ -22,8 +23,7 @@ let run
   sprintf "ProcessItunesLinkRequest started. ChatId: %d; Url: %s." chatId (url.ToString()) |> log.Info
   
   let addSearchRequest s = searchLyricsRequests.Add(chatId, s)
-  let sendMessage = Core.printResponse >> sendTextMessage telegramClient chatId  
-  let onError err = ErrorOccured err |> sendMessage; log.Error err
+  let sendMessage = Core.printResponse >> sendTextMessage telegramClient chatId
 
   loadDoc url 
   |> Result.map(fun doc -> (extractArtist doc, extractTrack doc)) 
@@ -31,7 +31,11 @@ let run
     | Ok (Ok artist, Ok track) -> 
         sprintf "%s %s" artist track |> addSearchRequest
         log.Info "Song name extracted and forwarded to lyrics searcher."
-    | Ok (artist, track) -> Utils.getError [artist; track] |> onError
-    | Error msg -> onError msg
+    | hasError -> 
+      sendMessage LyricsNotFound
+      match hasError with
+        | Ok (artistRes, trackRes) -> aggregateErrors [artistRes; trackRes]
+        | Error msg -> msg
+      |> log.Error
 
   log.Info "ProcessItunesLink completed."
