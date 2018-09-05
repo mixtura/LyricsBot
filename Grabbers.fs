@@ -1,7 +1,6 @@
 module LyricsBot.Grabbers
 
 open Utils
-open LyricsBot.Model
 open HtmlAgilityPack
 
 // Auto-generated xpath selectors
@@ -21,15 +20,6 @@ module private Selectors =
   module Itunes =    
     let trackNameSelector = "//*[@class='table__row popularity-star we-selectable-item is-active is-available we-selectable-item--allows-interaction ember-view']/td[2]/div/div/div";
     let artistNameSelector = "//*[@class='product-header__identity']/a";
-
-module Common =
-  let combineSongResult extractArtist extractTrack lyricsPageDoc = 
-    match extractArtist lyricsPageDoc with
-    | Ok(artist) -> 
-      match extractTrack lyricsPageDoc with
-      | Ok(track) -> Ok {Track = track; Artist = artist}
-      | Error msg  -> Error msg
-    | Error msg -> Error msg 
 
 module AZLyrics =
   open HtmlAgilityWrappers

@@ -18,7 +18,7 @@ let run
 
   let (chatId, url) = searchLyricsReqData
   let telegramClient = telegramClient context
-  
+
   sprintf "ProcessGMLinkRequest started. ChatId: %d; Url: %s." chatId (url.ToString()) |> log.Info
 
   let addSearchRequest artist track = searchLyricsRequests.Add(chatId, {Artist = artist; Track = track } |> toQuery)
