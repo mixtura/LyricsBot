@@ -25,8 +25,8 @@ let run
   let addSearchRequest artist track = searchLyricsRequests.Add(chatId, {Artist = artist; Track = track } |> toQuery)
   let sendMessage = Core.printResponse >> sendTextMessage telegramClient chatId
 
-  loadDoc url 
-  |> Result.bind(getRedirectLink)
+  extractSongIdFromLink url 
+  |> Result.bind(createGMPreviewLink)
   |> Result.bind(loadDoc)
   |> Result.map(fun doc -> (extractArtist doc, extractTrack doc, extractLyrics doc))
   |> function

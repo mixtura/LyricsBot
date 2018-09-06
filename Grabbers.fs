@@ -2,6 +2,7 @@ module LyricsBot.Grabbers
 
 open Utils
 open HtmlAgilityPack
+open System
 
 // Auto-generated xpath selectors
 module private Selectors = 
@@ -54,15 +55,15 @@ module AZLyrics =
 module GoggleMusic = 
   open HtmlAgilityWrappers
  
-  let extractSongName googlePlayLink = 
-    extractQueryValueFromUri "t" googlePlayLink
-  
-  let getRedirectLink doc = 
-    doc
-    |> extractFirstNode Selectors.GM.redirectLinkSelector 
-    |> optionToResult "Can't extract redirect link from GM lyrics page."
-    |> Result.bind (extractAttr "href" >> optionToResult "Can't extract href attribute from GM redirect link.")
-    |> Result.bind ( (+) "https://play.google.com"  >> createUri)
+  let extractSongIdFromLink (link: Uri) = 
+    link.Segments 
+    |> List.ofSeq 
+    |> List.rev 
+    |> function
+      | [] -> Error "Can't get song id from GM link."
+      | x::_ -> Ok x 
+
+  let createGMPreviewLink id = sprintf "https://play.google.com/music/preview/%s" id |> createUri
 
   let extractLyricsText = 
     List.ofSeq
