@@ -21,22 +21,23 @@ let run
   log.Info "Telegram bot hook started."
 
   let telegramClient = telegramClient context
-  let sendNotFound chatId = 
-    LyricsNotFound
-    |> printResponse 
-    |> sendTextMessage telegramClient chatId
+  let sendTextMessage response chatId =
+    response
+    |> printResponse
+    |> sendTextMessage telegramClient chatId 
 
   let processRequest chatId req = 
     match req with
     | SearchLyricsQuery query -> searchLyricsRequests.Add (chatId, query)
     | GMLink link -> gmLinkRequests.Add (chatId, link)
     | ItunesLink link -> itunesLinkRequests.Add (chatId, link)
+    | Start -> sendTextMessage HelpDoc chatId
 
   match update with
     | MessageUpdate(message) -> parseMessage message.Text |> function
       | Some req -> processRequest message.Chat.Id req
       | None -> 
-        sendNotFound message.Chat.Id; 
+        sendTextMessage LyricsNotFound message.Chat.Id; 
         log.Error "Telegram bot failed to parse message.";
     | _ -> log.Error "Not supported update type."
 

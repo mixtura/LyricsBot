@@ -3,16 +3,16 @@ module LyricsBot.Core
 open Utils
 open Model
 open System
-open System
 
 let printResponse response =
   match response with
+  | HelpDoc -> "Now type song name or share link from your music app (only Google Music allowed at the moment)."
   | LyricsFound (song, lyrics) ->  
     let songNameAsString {Artist = artist; Track = track} = 
       sprintf "%s - %s" artist track
     
     sprintf "%s \n\n %s" (songNameAsString song) lyrics
-  | LyricsNotFound -> "lyrics not found"
+  | LyricsNotFound -> "Lyrics not found."
 
 let parseMessage message =
   let extractLinks (str:string) =
@@ -43,4 +43,6 @@ let parseMessage message =
       | Some v -> Some v 
       | None -> tryFindLink rest links
 
-  extractLinks message |> tryFindLink [tryFindGMLink; tryFindItunesLink;]
+  match message with
+  | "/start" -> Some Start
+  | message -> extractLinks message |> tryFindLink [tryFindGMLink; tryFindItunesLink;]

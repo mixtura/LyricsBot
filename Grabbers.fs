@@ -80,13 +80,13 @@ module GoggleMusic =
     lyricsPageDoc
     |> extractFirstNode Selectors.GM.trackNameSelector 
     |> optionToResult "Can't extract track name from GM page."
-    |> Result.map (fun node -> node.InnerText)
+    |> Result.map (fun node -> node.InnerText |> HtmlEntity.DeEntitize)
 
   let extractArtist lyricsPageDoc =
     lyricsPageDoc 
     |> extractFirstNode Selectors.GM.artistNameSelector 
     |> optionToResult "Can't extract artist name from GM page."
-    |> Result.map (fun node -> node.InnerText)
+    |> Result.map (fun node -> node.InnerText |> HtmlEntity.DeEntitize)
 
 module Itunes = 
   open HtmlAgilityWrappers

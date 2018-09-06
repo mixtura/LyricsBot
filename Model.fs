@@ -5,10 +5,12 @@ open System
 type SongName = { Artist:string; Track:string }
 
 type Response = 
+  | HelpDoc
   | LyricsFound of SongName * string
   | LyricsNotFound
 
 type ParsedMessage = 
+  | Start
   | GMLink of Uri
   | ItunesLink of Uri 
   | SearchLyricsQuery of string
