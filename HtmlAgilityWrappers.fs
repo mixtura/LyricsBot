@@ -3,9 +3,7 @@ module LyricsBot.HtmlAgilityWrappers
 open System
 open HtmlAgilityPack
 
-let loadDoc (url: Uri) = 
-  try (new HtmlWeb()).Load(url) |> Ok 
-  with | _ -> sprintf "Can't load document by url %s" url.AbsoluteUri |> Error
+let loadDoc (url: Uri) = (new HtmlWeb()).Load(url)
 
 let extractFirstNode (selector: string) (doc: HtmlDocument) =       
   doc.DocumentNode.SelectSingleNode(selector) |> Option.ofObj

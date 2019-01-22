@@ -1,41 +1,43 @@
 module LyricsBot.Functions.ProcessItunesLink
 
-open System
-open Microsoft.Azure.WebJobs.Host
 open Microsoft.Azure.WebJobs
+open Microsoft.Extensions.Logging
+open LyricsBot
+open LyricsBot.Core
+open LyricsBot.Bot
 open LyricsBot.Model
 open LyricsBot.Telegram
-open LyricsBot.Grabbers.Itunes
-open LyricsBot
-open LyricsBot.HtmlAgilityWrappers
-open LyricsBot.Utils
+open System
 
 [<FunctionName("ProcessItunesLink")>]
 let run 
   ([<QueueTrigger("itunes-link-requests")>] searchLyricsReqData: Int64 * Uri, 
    [<Queue("search-lyrics-requests")>] searchLyricsRequests: ICollector<Int64 * string>,
-   log: TraceWriter, 
+   logger: ILogger, 
    context: ExecutionContext) =
 
   let (chatId, url) = searchLyricsReqData
   let telegramClient = telegramClient context
-
-  sprintf "ProcessItunesLinkRequest started. ChatId: %d; Url: %s." chatId (url.ToString()) |> log.Info
-  
   let addSearchRequest s = searchLyricsRequests.Add(chatId, s)
-  let sendMessage = Core.printResponse >> sendTextMessage telegramClient chatId
+  let sendMessage = printResponse >> sendTextMessage telegramClient chatId
+  let logResult result = 
+    let log = pringLinkProcessingResultLog result
 
-  loadDoc url 
-  |> Result.map(fun doc -> (extractArtist doc, extractTrack doc)) 
-  |> function
-    | Ok (Ok artist, Ok track) -> 
-        sprintf "%s %s" artist track |> addSearchRequest
-        log.Info "Song name extracted and forwarded to lyrics searcher."
-    | hasError -> 
-      sendMessage LyricsNotFound
-      match hasError with
-        | Ok (artistRes, trackRes) -> aggregateErrors [artistRes; trackRes]
-        | Error msg -> msg
-      |> log.Error
+    match result with
+    | Response(LyricsNotFound) -> logger.LogError log
+    | _ -> logger.LogInformation log
 
-  log.Info "ProcessItunesLink completed."
+  sprintf "ProcessItunesLinkRequest started. ChatId: %d; Url: %O." chatId url 
+  |> logger.LogInformation
+  
+  let processingResult = processItunesLink url
+
+  match processingResult with
+  | Response r-> 
+    sendMessage r
+  | SearchQuery q ->
+    addSearchRequest q
+
+  processingResult |> logResult    
+  
+  logger.LogInformation "ProcessItunesLink completed."

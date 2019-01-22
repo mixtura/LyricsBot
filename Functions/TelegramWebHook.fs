@@ -1,27 +1,29 @@
 module LyricsBot.Functions.TelegramBotHook
 
-open Microsoft.Azure.WebJobs.Host
+open Microsoft.Extensions.Logging
 open Microsoft.Azure.WebJobs
 open Microsoft.Azure.WebJobs.Extensions.Http
+open LyricsBot.Bot
 open LyricsBot.Core
 open LyricsBot.Model
 open LyricsBot.Telegram
 open System
 open Telegram.Bot.Types
 
-[<FunctionName("TelegramBotHook")>]
+[<FunctionName("TelegramWebHook")>]
 let run 
   ([<HttpTrigger(AuthorizationLevel.Function, "post")>] update: Update, 
    [<Queue("search-lyrics-requests")>] searchLyricsRequests: ICollector<Int64 * string>,      
    [<Queue("gm-link-requests")>] gmLinkRequests: ICollector<Int64 * Uri>, 
    [<Queue("itunes-link-requests")>] itunesLinkRequests: ICollector<Int64 * Uri>,
-   log: TraceWriter, 
+   log: ILogger, 
    context: ExecutionContext) = 
-
-  log.Info "Telegram bot hook started."
 
   let telegramClient = telegramClient context
   let sendTextMessage response chatId =
+    printResponseLog response 
+    |> log.LogInformation 
+
     response
     |> printResponse
     |> sendTextMessage telegramClient chatId 
@@ -33,12 +35,11 @@ let run
     | ItunesLink link -> itunesLinkRequests.Add (chatId, link)
     | Start -> sendTextMessage HelpDoc chatId
 
-  match update with
-    | MessageUpdate(message) -> parseMessage message.Text |> function
-      | Some req -> processRequest message.Chat.Id req
-      | None -> 
-        sendTextMessage LyricsNotFound message.Chat.Id; 
-        log.Error "Telegram bot failed to parse message.";
-    | _ -> log.Error "Not supported update type."
+  log.LogInformation "Telegram bot hook started."
 
-  log.Info "Telegram bot hook ended."
+  match update with
+    | MessageUpdate(message) -> 
+      parseMessage message.Text |> processRequest message.Chat.Id
+    | _ -> log.LogError "Not supported update type."
+
+  log.LogInformation "Telegram bot hook ended."

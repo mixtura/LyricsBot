@@ -1,40 +1,34 @@
 module LyricsBot.Functions.ProcessSearchQuery
 
-open Microsoft.Azure.WebJobs.Host
 open Microsoft.Azure.WebJobs
 open LyricsBot.Telegram
-open LyricsBot.Grabbers.AZLyrics
 open LyricsBot.Model
 open LyricsBot.Core
-open LyricsBot.Utils
-open LyricsBot.HtmlAgilityWrappers
+open LyricsBot.Bot
+open Microsoft.Extensions.Logging
 
 [<FunctionName("ProcessSearchQuery")>]
 let run
   ([<QueueTrigger("search-lyrics-requests")>] searchLyricsReqData, 
-   log: TraceWriter, 
+   logger: ILogger, 
    context: ExecutionContext) =
 
   let (chatId, query) = searchLyricsReqData
   let telegramClient = telegramClient context
-  let sendTextMessage = sendTextMessage telegramClient chatId
+  let sendMessage = printResponse >> sendTextMessage telegramClient chatId
+  let logResponse response = 
+    let log = printResponseLog response
 
-  sprintf "ProcessSearchQuery started. ChatId: %d; Query: %s." chatId query |> log.Info
+    match response with
+    | LyricsNotFound -> logger.LogError log
+    | _ -> logger.LogInformation log
+
+  sprintf "ProcessSearchQuery started. ChatId: %d; Query: %s." chatId query 
+  |> logger.LogInformation
   
-  createSearchLyricsUrl query 
-  |> Result.bind(loadDoc)
-  |> Result.bind(getFirstSearchResultLink)
-  |> Result.bind(loadDoc)
-  |> Result.map(fun doc -> (extractLyrics doc, extractArtist doc, extractTrack doc))
-  |> function 
-    | Ok (Ok lyrics, Ok artist, Ok track) -> LyricsFound ({Artist = artist; Track = track }, lyrics)
-    | hasError -> 
-      match hasError with  
-        | Ok (lyricsRes, artistRes, trackRes) -> aggregateErrors [lyricsRes; artistRes; trackRes] 
-        | Error err -> err
-      |> log.Error
-      LyricsNotFound
-  |> printResponse
-  |> sendTextMessage
+  let response = processSearchQuery query
 
-  log.Info "ProcessSearchQuery ended."
+  response |> sendMessage
+  response |> logResponse  
+
+  logger.LogInformation "ProcessSearchQuery ended."

@@ -22,6 +22,7 @@ module private Selectors =
     let trackNameSelector = "//*[@class='table__row popularity-star we-selectable-item is-active is-available we-selectable-item--allows-interaction ember-view']/td[2]/div/div/div";
     let artistNameSelector = "//*[@class='product-header__identity']/a";
 
+[<RequireQualifiedAccess>]
 module AZLyrics =
   open HtmlAgilityWrappers
 
@@ -30,28 +31,25 @@ module AZLyrics =
   let getFirstSearchResultLink lyricsPageDoc = 
     lyricsPageDoc
     |> extractFirstNode Selectors.AZ.lyricsSearchResultSelector 
-    |> optionToResult "Can't extract search result from azlyrics search page."
-    |> Result.bind (extractAttr "href" >> optionToResult "Can't extract href attribute from azlyrics search result.")
-    |> Result.bind (createUri)
+    |> Option.bind (extractAttr "href" )
+    |> Option.bind (createUri)
 
   let extractArtist lyricsPageDoc =
     lyricsPageDoc 
-    |> extractFirstNode Selectors.AZ.artistNameSelector 
-    |> optionToResult "Can't extract artist name from azlyrics lyrics page."
-    |> Result.map (fun n -> n.InnerText)
+    |> extractFirstNode Selectors.AZ.artistNameSelector
+    |> Option.map (fun n -> n.InnerText)
 
   let extractTrack lyricsPageDoc =        
     lyricsPageDoc 
     |> extractFirstNode Selectors.AZ.songNameSelector 
-    |> optionToResult "Can't extract track name from azlyrics lyrics page."
-    |> Result.map (fun n -> n.InnerText.Replace("Lyrics", "").Trim('"'))
+    |> Option.map (fun n -> n.InnerText.Replace("Lyrics", "").Trim('"'))
 
-  let extractLyrics lyricsPageDoc=
+  let extractLyrics lyricsPageDoc =
     lyricsPageDoc
     |> extractFirstNode Selectors.AZ.lyricsSelector 
-    |> optionToResult "Can't extract lyrics from azlyrics lyrics page."
-    |> Result.map (fun node -> node.InnerText)
+    |> Option.map (fun node -> node.InnerText)
 
+[<RequireQualifiedAccess>]
 module GoggleMusic = 
   open HtmlAgilityWrappers
  
@@ -60,8 +58,8 @@ module GoggleMusic =
     |> List.ofSeq 
     |> List.rev 
     |> function
-      | [] -> Error "Can't get song id from GM link."
-      | x::_ -> Ok x 
+      | [] -> None
+      | x::_ -> Some x 
 
   let createGMPreviewLink id = sprintf "https://play.google.com/music/preview/%s" id |> createUri
 
@@ -74,32 +72,28 @@ module GoggleMusic =
   let extractLyrics lyricsPageDoc = 
     lyricsPageDoc
     |> extractAllNodes Selectors.GM.lyricsParagraphsSelector 
-    |> optionToResult "Can't extract lyrics from GM page."
-    |> Result.map (extractLyricsText)
+    |> Option.map (extractLyricsText)
 
   let extractTrack lyricsPageDoc =
     lyricsPageDoc
     |> extractFirstNode Selectors.GM.trackNameSelector 
-    |> optionToResult "Can't extract track name from GM page."
-    |> Result.map (fun node -> node.InnerText |> HtmlEntity.DeEntitize)
+    |> Option.map (fun node -> node.InnerText |> HtmlEntity.DeEntitize)
 
   let extractArtist lyricsPageDoc =
     lyricsPageDoc 
     |> extractFirstNode Selectors.GM.artistNameSelector 
-    |> optionToResult "Can't extract artist name from GM page."
-    |> Result.map (fun node -> node.InnerText |> HtmlEntity.DeEntitize)
+    |> Option.map (fun node -> node.InnerText |> HtmlEntity.DeEntitize)
 
+[<RequireQualifiedAccess>]
 module Itunes = 
   open HtmlAgilityWrappers
 
   let extractTrack itunesPageDoc = 
     itunesPageDoc 
     |> extractFirstNode Selectors.Itunes.trackNameSelector 
-    |> optionToResult "Can't extract track from Itunes song page." 
-    |> Result.map(fun node -> node.InnerText)
+    |> Option.map(fun node -> node.InnerText)
   
   let extractArtist itunesPageDoc = 
     itunesPageDoc 
     |> extractFirstNode  Selectors.Itunes.artistNameSelector 
-    |> optionToResult "Can't extract artist from Itunes song page." 
-    |> Result.map(fun node -> node.InnerText)
+    |> Option.map(fun node -> node.InnerText)

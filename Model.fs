@@ -2,11 +2,23 @@ module LyricsBot.Model
 
 open System
 
-type SongName = { Artist:string; Track:string }
+type SongName = 
+  { 
+    Artist:string; 
+    Track:string 
+  }
+  
+  member x.AsQuery =
+    let cleanName (name : String) = 
+      match name.IndexOf("(") with
+      | index when index > 0 -> name.Substring(0, index)
+      | _ -> name
+
+    List.map cleanName [x.Artist; x.Track] |> String.concat " "
 
 type Response = 
   | HelpDoc
-  | LyricsFound of SongName * string
+  | LyricsFound of name: SongName * content: string
   | LyricsNotFound
 
 type ParsedMessage = 
@@ -15,10 +27,6 @@ type ParsedMessage =
   | ItunesLink of Uri 
   | SearchLyricsQuery of string
 
-let toQuery {Artist = artist; Track = track} =
-  let cleanName (name : String) = 
-    match name.IndexOf("(") with
-    | index when index > 0 -> name.Substring(0, index)
-    | _ -> name
-
-  List.map cleanName [artist; track] |> String.concat " "
+type LinkProcessingResult =
+  | Response of Response
+  | SearchQuery of string
