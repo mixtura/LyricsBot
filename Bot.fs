@@ -1,29 +1,48 @@
 module LyricsBot.Bot
 
-open LyricsBot.Core
-open LyricsBot.Model
 open LyricsBot.Grabbers
 open LyricsBot.HtmlAgilityWrappers
+open LyricsBot.Model
+open LyricsBot.Utils
+open System
 
+module AZ = AZLyrics
 module GM = GoggleMusic
 module IT = Itunes
-module AZ = AZLyrics
 
 let parseMessage message =  
-  let tryFindGMLink = 
-    tryFindLinkByHost "play.google.com" >> Option.map GMLink
+  let extractLinks (str:string) =
+    str.Split [|' '; '\n'; '\t'|]
+    |> List.ofArray
+    |> List.map (fun x -> x.Trim())
+    |> List.filter (fun x -> x.StartsWith "http://" || x.StartsWith "https://")
+    |> List.map createUri
+    |> List.choose id
 
-  let tryFindItunesLink = 
-    tryFindLinkByHost "itunes.apple.com" >> Option.map ItunesLink
+  let (|LinkWithHost|_|) hostName (link: Uri) = 
+    if link.Host.Equals hostName 
+    then Some link 
+    else None
 
-  parser
-    [tryFindGMLink; tryFindItunesLink]
-    (extractLinks message) 
-    message
+  let rec findValidLink links =
+    match links with
+    | [] -> None
+    | head::rest -> 
+      match head with
+      | LinkWithHost "play.google.com" link -> GMLink link |> Some
+      | LinkWithHost "itunes.apple.com" link -> ItunesLink link |> Some
+      | _ -> findValidLink rest 
+
+  match message with
+  | "/start" -> Start
+  | message ->
+    extractLinks message
+    |> findValidLink
+    |> Option.defaultValue(SearchLyricsQuery message)
 
 let processGMLink url=
   GM.extractSongIdFromLink url 
-  |> Option.bind(GoggleMusic.createGMPreviewLink)
+  |> Option.bind(GM.createGMPreviewLink)
   |> Option.map(loadDoc)
   |> Option.map(fun doc -> 
     (GM.extractArtist doc,
@@ -33,12 +52,9 @@ let processGMLink url=
     | Some (Some artist, Some track, lyricsRes) -> 
       let songName = {Artist = artist; Track = track}
       match lyricsRes with
-      | Some lyrics -> 
-        LyricsFound (songName, lyrics) |> Response        
-      | None -> 
-        songName.AsQuery |> SearchQuery
-    | _ -> 
-       LyricsNotFound |> Response
+      | Some lyrics -> LyricsFound (songName, lyrics) |> Response        
+      | None -> songName.AsQuery |> SearchQuery
+    | _ -> LyricsNotFound |> Response
 
 let processItunesLink url =
   loadDoc url 

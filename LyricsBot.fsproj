@@ -4,8 +4,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="HtmlAgilityWrappers.fs" />
-    <Compile Include="Model.fs" />
     <Compile Include="Utils.fs" />
+    <Compile Include="Model.fs" />
     <Compile Include="Telegram.fs" />
     <Compile Include="Grabbers.fs" />
     <Compile Include="Core.fs" />

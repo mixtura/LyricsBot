@@ -1,10 +1,8 @@
 module LyricsBot.Core
 
-open Utils
 open Model
-open System
 
-let songNameAsString {Artist = artist; Track = track} = 
+let private songNameAsString {Artist = artist; Track = track} = 
   sprintf "%s - %s" artist track
 
 let printResponseLog response =
@@ -22,29 +20,6 @@ let pringLinkProcessingResultLog result =
 let printResponse response =
   match response with
   | HelpDoc -> "Now type song name or share link from your music app (only Google Music allowed at the moment)."
-  | LyricsFound (song, lyrics) ->  
-    let songNameAsString {Artist = artist; Track = track} = 
-      sprintf "%s - %s" artist track
-    
+  | LyricsFound (song, lyrics) ->     
     sprintf "%s \n\n %s" (songNameAsString song) lyrics
   | LyricsNotFound -> "Lyrics not found."
-
-let extractLinks (str:string) =
-    str.Split [|' '; '\n'; '\t'|]
-    |> List.ofArray 
-    |> List.filter (fun x -> x.StartsWith "http://" || x.StartsWith "https://")
-    |> List.map createUri
-    |> List.choose id
-
-let tryFindLinkByHost hostName (links: Uri list) = 
-  links |> List.tryFind (function uri -> uri.Host.Equals hostName)
-
-let parser linkFinders links =
-  function
-  | "/start" -> Start
-  | message ->
-    linkFinders
-    |> List.map(fun finder -> finder links)  
-    |> List.choose id 
-    |> List.tryHead
-    |> Option.defaultValue(SearchLyricsQuery message)

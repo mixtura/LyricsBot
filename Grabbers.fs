@@ -16,7 +16,6 @@ module private Selectors =
     let lyricsParagraphsSelector = "//*[@id='main-content-container']/div/p"
     let trackNameSelector = "//*[@id='main-content-container']/div[1]/div/div/div[1]/a"
     let artistNameSelector = "//*[@id='main-content-container']/div[1]/div/div/div[2]/a"
-    let redirectLinkSelector = "/html/body/a"
 
   module Itunes =    
     let trackNameSelector = "//*[@class='table__row popularity-star we-selectable-item is-active is-available we-selectable-item--allows-interaction ember-view']/td[2]/div/div/div";

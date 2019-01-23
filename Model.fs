@@ -3,10 +3,7 @@ module LyricsBot.Model
 open System
 
 type SongName = 
-  { 
-    Artist:string; 
-    Track:string 
-  }
+  { Artist:string; Track:string }
   
   member x.AsQuery =
     let cleanName (name : String) = 
@@ -21,7 +18,7 @@ type Response =
   | LyricsFound of name: SongName * content: string
   | LyricsNotFound
 
-type ParsedMessage = 
+type Message = 
   | Start
   | GMLink of Uri
   | ItunesLink of Uri 
