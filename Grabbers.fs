@@ -1,8 +1,8 @@
 module LyricsBot.Grabbers
 
-open Utils
 open HtmlAgilityPack
 open System
+open Utils
 
 // Auto-generated xpath selectors
 module private Selectors = 

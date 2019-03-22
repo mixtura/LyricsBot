@@ -1,12 +1,12 @@
 module LyricsBot.Functions.TelegramBotHook
 
-open Microsoft.Extensions.Logging
-open Microsoft.Azure.WebJobs
-open Microsoft.Azure.WebJobs.Extensions.Http
 open LyricsBot.Bot
 open LyricsBot.Core
 open LyricsBot.Model
 open LyricsBot.Telegram
+open Microsoft.Extensions.Logging
+open Microsoft.Azure.WebJobs
+open Microsoft.Azure.WebJobs.Extensions.Http
 open System
 open Telegram.Bot.Types
 
@@ -19,14 +19,11 @@ let run
    log: ILogger, 
    context: ExecutionContext) = 
 
-  let telegramClient = telegramClient context
+  let telegramBotClient = createTelegramBotClient context 
   let sendTextMessage response chatId =
-    printResponseLog response 
-    |> log.LogInformation 
-
-    response
-    |> printResponse
-    |> sendTextMessage telegramClient chatId 
+    let send = telegramBotClient |> sendTextMessage    
+    response |> (printResponseLog >> log.LogInformation)
+    response |> (printResponse >> send chatId) 
 
   let processRequest chatId req = 
     match req with

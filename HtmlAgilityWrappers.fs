@@ -1,7 +1,7 @@
 module LyricsBot.HtmlAgilityWrappers
 
-open System
 open HtmlAgilityPack
+open System
 
 let loadDoc (url: Uri) = (new HtmlWeb()).Load(url)
 

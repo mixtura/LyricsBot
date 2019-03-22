@@ -12,7 +12,7 @@ let printResponseLog response =
       sprintf "Lyrics found for song: %s" (songNameAsString song)
     | LyricsNotFound -> "Lyrics not found."  
 
-let pringLinkProcessingResultLog result =
+let printLinkProcessingResultLog result =
   match result with
   | SearchQuery q -> sprintf "Search query added: %s" q
   | Response r -> printResponseLog r

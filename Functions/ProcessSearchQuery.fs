@@ -1,10 +1,10 @@
 module LyricsBot.Functions.ProcessSearchQuery
 
-open Microsoft.Azure.WebJobs
 open LyricsBot.Telegram
 open LyricsBot.Model
 open LyricsBot.Core
 open LyricsBot.Bot
+open Microsoft.Azure.WebJobs
 open Microsoft.Extensions.Logging
 
 [<FunctionName("ProcessSearchQuery")>]
@@ -14,8 +14,8 @@ let run
    context: ExecutionContext) =
 
   let (chatId, query) = searchLyricsReqData
-  let telegramClient = telegramClient context
-  let sendMessage = printResponse >> sendTextMessage telegramClient chatId
+  let telegramBotClient = createTelegramBotClient context
+  let sendMessage = printResponse >> sendTextMessage telegramBotClient chatId
   let logResponse response = 
     let log = printResponseLog response
 

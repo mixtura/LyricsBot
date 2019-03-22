@@ -1,12 +1,12 @@
 module LyricsBot.Functions.SimplePipelineTelegramWebHook
 
-open Microsoft.Extensions.Logging
-open Microsoft.Azure.WebJobs
-open Microsoft.Azure.WebJobs.Extensions.Http
 open LyricsBot.Bot
 open LyricsBot.Core
 open LyricsBot.Model
 open LyricsBot.Telegram
+open Microsoft.Extensions.Logging
+open Microsoft.Azure.WebJobs
+open Microsoft.Azure.WebJobs.Extensions.Http
 open Telegram.Bot.Types
 
 [<FunctionName("SimplePipelineTelegramWebHook")>]
@@ -15,21 +15,18 @@ let run
    log: ILogger, 
    context: ExecutionContext) = 
 
-  let telegramClient = telegramClient context
+  let telegramBotClient = createTelegramBotClient context
   let sendTextMessage chatId response =
-    printResponseLog response 
-    |> log.LogInformation 
+    let send = telegramBotClient |> sendTextMessage
+    response |> (printResponseLog >> log.LogInformation)
+    response |> (printResponse >> send chatId) 
 
-    response
-    |> printResponse
-    |> sendTextMessage telegramClient chatId 
+  let processMessage req =
+    let processLinkResult result =
+      match result with
+      | SearchQuery q -> processSearchQuery q
+      | Response r -> r
 
-  let processLinkResult result =
-    match result with
-    | SearchQuery q -> processSearchQuery q
-    | Response r -> r
-
-  let processMessage req = 
     match req with
     | SearchLyricsQuery query -> processSearchQuery query
     | GMLink link -> processGMLink link |> processLinkResult

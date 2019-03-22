@@ -1,14 +1,13 @@
 module LyricsBot.Bot
 
-open LyricsBot.Grabbers
 open LyricsBot.HtmlAgilityWrappers
 open LyricsBot.Model
 open LyricsBot.Utils
 open System
 
-module AZ = AZLyrics
-module GM = GoggleMusic
-module IT = Itunes
+module AZ = LyricsBot.Grabbers.AZLyrics
+module GM = LyricsBot.Grabbers.GoggleMusic
+module IT = LyricsBot.Grabbers.Itunes
 
 let parseMessage message =  
   let extractLinks (str:string) =
