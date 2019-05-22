@@ -46,9 +46,14 @@ module AZLyrics =
 
   let createSearchLyricsUrl query = 
     let cleanQuery (query : String) = 
-      match query.IndexOf("(") with
-      | index when index > 0 -> query.Substring(0, index)
-      | _ -> query
+      let openParIndex = query.IndexOf("(")
+      let closeParIndex = query.IndexOf(")") + 1
+      
+      if openParIndex > 0 && closeParIndex > 0
+      then 
+        query.Substring(0, openParIndex) + 
+        query.Substring(closeParIndex, query.Length - closeParIndex)
+      else query
 
     cleanQuery query 
     |> HttpUtility.UrlEncode
