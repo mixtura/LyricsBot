@@ -5,13 +5,7 @@ open System
 type SongName = 
   { Artist:string; Track:string }
   
-  member x.AsQuery =
-    let cleanName (name : String) = 
-      match name.IndexOf("(") with
-      | index when index > 0 -> name.Substring(0, index)
-      | _ -> name
-
-    List.map cleanName [x.Artist; x.Track] |> String.concat " "
+  member x.Full = [x.Artist; x.Track] |> String.concat " "
 
 type Response = 
   | HelpDoc

@@ -21,7 +21,7 @@ let run
 
   let telegramBotClient = createTelegramBotClient context 
   let sendTextMessage response chatId =
-    let send = telegramBotClient |> sendTextMessage    
+    let send = telegramBotClient |> splitAndSendMessages    
     response |> (printResponseLog >> log.LogInformation)
     response |> (printResponse >> send chatId) 
 

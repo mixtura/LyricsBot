@@ -18,7 +18,7 @@ let run
   let (chatId, url) = searchLyricsReqData
   let telegramBotClient = createTelegramBotClient context
   let addSearchRequest s = searchLyricsRequests.Add(chatId, s)
-  let sendMessage = printResponse >> sendTextMessage telegramBotClient chatId
+  let sendMessage = printResponse >> splitAndSendMessages telegramBotClient chatId
   let logResult result = 
     let log = printLinkProcessingResultLog result
 

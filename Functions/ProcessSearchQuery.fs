@@ -15,7 +15,7 @@ let run
 
   let (chatId, query) = searchLyricsReqData
   let telegramBotClient = createTelegramBotClient context
-  let sendMessage = printResponse >> sendTextMessage telegramBotClient chatId
+  let sendMessage = printResponse >> splitAndSendMessages telegramBotClient chatId
   let logResponse response = 
     let log = printResponseLog response
 

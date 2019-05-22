@@ -3,15 +3,14 @@
     <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="HtmlAgilityWrappers.fs" />
     <Compile Include="Utils.fs" />
     <Compile Include="Model.fs" />
-    <Compile Include="Telegram.fs" />
     <Compile Include="Grabbers.fs" />
+    <Compile Include="Telegram.fs" />
     <Compile Include="Core.fs" />
     <Compile Include="Bot.fs" />
-    <Compile Include="Functions/SimplePipelineTelegramWebHook.fs" />
     <Compile Include="Functions/TelegramWebHook.fs" />
+    <Compile Include="Functions/SimplePipelineTelegramWebHook.fs" />
     <Compile Include="Functions/ProcessSearchQuery.fs" />
     <Compile Include="Functions/ProcessItunesLink.fs" />
     <Compile Include="Functions/ProcessGMLink.fs" />

@@ -17,26 +17,37 @@ let run
 
   let telegramBotClient = createTelegramBotClient context
   let sendTextMessage chatId response =
-    let send = telegramBotClient |> sendTextMessage
-    response |> (printResponseLog >> log.LogInformation)
-    response |> (printResponse >> send chatId) 
+    sprintf "Sending response to chat with id %i. Response:\n%A" chatId response
+    |> log.LogInformation 
+
+    let send = telegramBotClient |> splitAndSendMessages
+    response |> (printResponse >> send chatId)
 
   let processMessage req =
-    let processLinkResult result =
-      match result with
-      | SearchQuery q -> processSearchQuery q
-      | Response r -> r
+    try
+      sprintf "Parsed message: %A" req |> log.LogInformation 
 
-    match req with
-    | SearchLyricsQuery query -> processSearchQuery query
-    | GMLink link -> processGMLink link |> processLinkResult
-    | ItunesLink link -> processItunesLink link |> processLinkResult
-    | Start -> Response.HelpDoc
+      let processLinkResult result =
+        match result with
+        | SearchQuery q -> processSearchQuery q
+        | Response r -> r
+
+      match req with
+      | SearchLyricsQuery query -> processSearchQuery query
+      | GMLink link -> processGMLink link |> processLinkResult
+      | ItunesLink link -> processItunesLink link |> processLinkResult
+      | Start -> Response.HelpDoc
+    with ex -> 
+      log.LogError(ex, "Error happened while processing message.") 
+      LyricsNotFound
 
   log.LogInformation "SimplePipelineTelegramWebHook started."
 
   match update with
     | MessageUpdate(message) -> 
+      sprintf "Received message from chat with id %i. The message text: %s" message.Chat.Id message.Text 
+      |> log.LogInformation
+      
       parseMessage message.Text 
       |> processMessage 
       |> (sendTextMessage message.Chat.Id)

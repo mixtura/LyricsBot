@@ -24,8 +24,28 @@ let createTelegramBotClient (context: ExecutionContext) =
 
   TelegramBotClient(token)
 
+let splitMessage (message: string) = 
+  let maxLength = 4096
+  
+  let (|Chunk|_|) (str:string) =    
+    if str.Length <= maxLength then None else
+    match str.Substring(0, maxLength).LastIndexOf('\n') with
+    | splitPoint when splitPoint > 0 
+      -> Some (str.Substring(0, splitPoint), str.Substring(splitPoint))
+    | _ -> Some (str.Substring(0, maxLength), str.Substring(maxLength))
+
+  let rec splitMessageInner (msg: string) acc =
+    match msg with
+    | Chunk (chunk, rest) -> splitMessageInner rest (chunk::acc) 
+    | _ -> msg::acc
+
+  splitMessageInner message [] |> List.rev
+
 let sendTextMessage (client: TelegramBotClient) (chatId: Int64) body = 
   client.SendTextMessageAsync(ChatId(chatId), body) 
   |> Async.AwaitTask 
   |> Async.RunSynchronously 
   |> ignore
+
+let splitAndSendMessages (client: TelegramBotClient) (chatId: Int64) body =
+  splitMessage body |> List.iter(fun msg -> sendTextMessage client chatId msg)

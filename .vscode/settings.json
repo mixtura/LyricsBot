@@ -1,2 +1,4 @@
 {
+    "azureFunctions.projectLanguage": "F#Script",
+    "azureFunctions.projectRuntime": "~2"
 }

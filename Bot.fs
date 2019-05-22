@@ -1,6 +1,6 @@
 module LyricsBot.Bot
 
-open LyricsBot.HtmlAgilityWrappers
+open LyricsBot.Grabbers.HtmlAgilityWrappers
 open LyricsBot.Model
 open LyricsBot.Utils
 open System
@@ -40,39 +40,31 @@ let parseMessage message =
     |> Option.defaultValue(SearchLyricsQuery message)
 
 let processGMLink url=
-  GM.extractSongIdFromLink url 
-  |> Option.bind(GM.createGMPreviewLink)
-  |> Option.map(loadDoc)
-  |> Option.map(fun doc -> 
-    (GM.extractArtist doc,
-     GM.extractTrack doc, 
-     GM.extractLyrics doc))
+  loadDoc url
+  |> GM.extractSongTitle
   |> function
-    | Some (Some artist, Some track, lyricsRes) -> 
-      let songName = {Artist = artist; Track = track}
-      match lyricsRes with
-      | Some lyrics -> LyricsFound (songName, lyrics) |> Response        
-      | None -> songName.AsQuery |> SearchQuery
-    | _ -> LyricsNotFound |> Response
+    | Some (title) -> SearchQuery title
+    | _ -> Response LyricsNotFound
 
 let processItunesLink url =
   loadDoc url 
   |> (fun doc -> (IT.extractArtist doc, IT.extractTrack doc)) 
   |> function
     | (Some artist, Some track) -> 
-      {Artist = artist; Track = track}.AsQuery |> SearchQuery
-    | _ -> LyricsNotFound |> Response
+      let songName = {Artist = artist; Track = track}
+      SearchQuery songName.Full
+    | _ -> Response LyricsNotFound
 
-let processSearchQuery query =
-  AZ.createSearchLyricsUrl query 
-  |> Option.map(loadDoc)
-  |> Option.bind(AZ.getFirstSearchResultLink)
-  |> Option.map(loadDoc)
-  |> Option.map(fun doc -> 
+let processSearchQuery =
+  AZ.createSearchLyricsUrl 
+  >> Option.map(loadDoc)
+  >> Option.bind(AZ.getFirstSearchResultLink)
+  >> Option.map(loadDoc)
+  >> Option.map(fun doc -> 
     (AZ.extractLyrics doc, 
      AZ.extractArtist doc, 
      AZ.extractTrack doc))
-  |> function 
+  >> function 
     | Some (Some lyrics, Some artist, Some track) -> 
       LyricsFound ({Artist = artist; Track = track }, lyrics)
     | _ -> LyricsNotFound

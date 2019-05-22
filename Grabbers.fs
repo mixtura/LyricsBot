@@ -1,8 +1,29 @@
 module LyricsBot.Grabbers
 
-open HtmlAgilityPack
 open System
+open System.Web
 open Utils
+
+module HtmlAgilityWrappers =
+  open HtmlAgilityPack
+
+  let loadDoc (url: Uri) = (HtmlWeb()).Load(url)
+
+  let extractFirstNode (selector: string) (doc: HtmlDocument) =       
+    doc.DocumentNode.SelectSingleNode(selector) |> Option.ofObj
+
+  let extractAllNodes (selector: string) (doc: HtmlDocument) =
+    doc.DocumentNode.SelectNodes(selector) |> Option.ofObj 
+
+  let extractAttr attrName (node: HtmlNode) =
+    node.GetAttributeValue(attrName, "")
+    |> Some
+    |> Option.bind (function 
+      | "" -> None 
+      | x -> HttpUtility.HtmlDecode(x) |> Some)
+
+  let extractText (node: HtmlNode) =
+    node.InnerText |> HttpUtility.HtmlDecode
 
 // Auto-generated xpath selectors
 module private Selectors = 
@@ -13,9 +34,7 @@ module private Selectors =
     let artistNameSelector = "/html/body/div[3]/div/div[2]/div[3]/h2/b"
 
   module GM =
-    let lyricsParagraphsSelector = "//*[@id='main-content-container']/div/p"
-    let trackNameSelector = "//*[@id='main-content-container']/div[1]/div/div/div[1]/a"
-    let artistNameSelector = "//*[@id='main-content-container']/div[1]/div/div/div[2]/a"
+    let metaTitleSelector = "/html/head/meta[3]"
 
   module Itunes =    
     let trackNameSelector = "//*[@class='table__row popularity-star we-selectable-item is-active is-available we-selectable-item--allows-interaction ember-view']/td[2]/div/div/div";
@@ -25,7 +44,16 @@ module private Selectors =
 module AZLyrics =
   open HtmlAgilityWrappers
 
-  let createSearchLyricsUrl = sprintf "https://search.azlyrics.com/search.php?q=%s&w=songs" >> createUri
+  let createSearchLyricsUrl query = 
+    let cleanQuery (query : String) = 
+      match query.IndexOf("(") with
+      | index when index > 0 -> query.Substring(0, index)
+      | _ -> query
+
+    cleanQuery query 
+    |> HttpUtility.UrlEncode
+    |> sprintf "https://search.azlyrics.com/search.php?q=%s&w=songs" 
+    |> createUri
 
   let getFirstSearchResultLink lyricsPageDoc = 
     lyricsPageDoc
@@ -36,53 +64,30 @@ module AZLyrics =
   let extractArtist lyricsPageDoc =
     lyricsPageDoc 
     |> extractFirstNode Selectors.AZ.artistNameSelector
-    |> Option.map (fun n -> n.InnerText)
+    |> Option.map(extractText)
+    |> Option.map(fun artist -> artist.Replace("Lyrics", ""))
 
   let extractTrack lyricsPageDoc =        
     lyricsPageDoc 
     |> extractFirstNode Selectors.AZ.songNameSelector 
-    |> Option.map (fun n -> n.InnerText.Replace("Lyrics", "").Trim('"'))
-
+    |> Option.map(extractText)
+    |> Option.map(fun track -> track.Trim('"'))
+    
   let extractLyrics lyricsPageDoc =
     lyricsPageDoc
     |> extractFirstNode Selectors.AZ.lyricsSelector 
-    |> Option.map (fun node -> node.InnerText)
+    |> Option.map(extractText)
 
 [<RequireQualifiedAccess>]
 module GoggleMusic = 
   open HtmlAgilityWrappers
  
-  let extractSongIdFromLink (link: Uri) = 
-    link.Segments 
-    |> List.ofSeq 
-    |> List.rev 
-    |> function
-      | [] -> None
-      | x::_ -> Some x 
+  let extractSongTitle metaDoc = 
+    metaDoc 
+    |> extractFirstNode Selectors.GM.metaTitleSelector 
+    |> Option.bind(extractAttr "content")
 
-  let createGMPreviewLink id = sprintf "https://play.google.com/music/preview/%s" id |> createUri
-
-  let extractLyricsText = 
-    List.ofSeq
-    >> List.map (fun (node: HtmlNode) -> node.InnerHtml )
-    >> List.map (fun p -> p.Replace("<br>", "\n") |> HtmlEntity.DeEntitize) 
-    >> String.concat "\n"
-
-  let extractLyrics lyricsPageDoc = 
-    lyricsPageDoc
-    |> extractAllNodes Selectors.GM.lyricsParagraphsSelector 
-    |> Option.map (extractLyricsText)
-
-  let extractTrack lyricsPageDoc =
-    lyricsPageDoc
-    |> extractFirstNode Selectors.GM.trackNameSelector 
-    |> Option.map (fun node -> node.InnerText |> HtmlEntity.DeEntitize)
-
-  let extractArtist lyricsPageDoc =
-    lyricsPageDoc 
-    |> extractFirstNode Selectors.GM.artistNameSelector 
-    |> Option.map (fun node -> node.InnerText |> HtmlEntity.DeEntitize)
-
+// TODO
 [<RequireQualifiedAccess>]
 module Itunes = 
   open HtmlAgilityWrappers
