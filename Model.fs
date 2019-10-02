@@ -5,7 +5,8 @@ open System
 type SongName = 
   { Artist:string; Track:string }
   
-  member x.Full = [x.Artist; x.Track] |> String.concat " "
+  member x.SearchQuery = [x.Artist; x.Track] |> String.concat " "
+  member x.Pretty = sprintf "%s - %s" x.Artist x.Track
 
 type Response = 
   | HelpDoc

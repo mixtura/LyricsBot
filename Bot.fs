@@ -15,8 +15,7 @@ let parseMessage message =
     |> List.ofArray
     |> List.map (fun x -> x.Trim())
     |> List.filter (fun x -> x.StartsWith "http://" || x.StartsWith "https://")
-    |> List.map createUri
-    |> List.choose id
+    |> List.choose createUri
 
   let (|LinkWithHost|_|) hostName (link: Uri) = 
     if link.Host.Equals hostName 
@@ -41,9 +40,9 @@ let parseMessage message =
 
 let processGMLink url=
   loadDoc url
-  |> GM.extractSongTitle
+  |> GM.extractSongName
   |> function
-    | Some (title) -> SearchQuery title
+    | Some (songName) -> SearchQuery songName.SearchQuery
     | _ -> Response LyricsNotFound
 
 let processItunesLink url =
@@ -52,7 +51,7 @@ let processItunesLink url =
   |> function
     | (Some artist, Some track) -> 
       let songName = {Artist = artist; Track = track}
-      SearchQuery songName.Full
+      SearchQuery songName.SearchQuery
     | _ -> Response LyricsNotFound
 
 let processSearchQuery =
@@ -68,3 +67,14 @@ let processSearchQuery =
     | Some (Some lyrics, Some artist, Some track) -> 
       LyricsFound ({Artist = artist; Track = track }, lyrics)
     | _ -> LyricsNotFound
+
+let processMessage req =
+  let processLinkResult = function
+  | SearchQuery q -> processSearchQuery q
+  | Response r -> r
+
+  match req with
+  | SearchLyricsQuery query -> processSearchQuery query
+  | GMLink link -> processGMLink link |> processLinkResult
+  | ItunesLink link -> processItunesLink link |> processLinkResult
+  | Start -> Response.HelpDoc  

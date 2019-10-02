@@ -47,5 +47,15 @@ let sendTextMessage (client: TelegramBotClient) (chatId: Int64) body =
   |> Async.RunSynchronously 
   |> ignore
 
-let splitAndSendMessages (client: TelegramBotClient) (chatId: Int64) body =
-  splitMessage body |> List.iter(fun msg -> sendTextMessage client chatId msg)
+let replyTextMessage (client: TelegramBotClient) (chatId: Int64) (replyToId: int) body = 
+  client.SendTextMessageAsync(ChatId(chatId), body, replyToMessageId = replyToId) 
+  |> Async.AwaitTask 
+  |> Async.RunSynchronously 
+  |> ignore
+
+let splitAndSendMessages (client: TelegramBotClient) (chatId: Int64) (replyToId: int) body =
+  let replyMessages messages = 
+    messages |> List.head |> replyTextMessage client chatId replyToId
+    messages |> List.skip 1 |> List.iter(fun msg -> sendTextMessage client chatId msg)
+
+  splitMessage body |> replyMessages

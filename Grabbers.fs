@@ -86,11 +86,16 @@ module AZLyrics =
 [<RequireQualifiedAccess>]
 module GoggleMusic = 
   open HtmlAgilityWrappers
- 
-  let extractSongTitle metaDoc = 
+  open LyricsBot.Model
+
+  let extractSongName metaDoc = 
     metaDoc 
     |> extractFirstNode Selectors.GM.metaTitleSelector 
     |> Option.bind(extractAttr "content")
+    |> Option.map(fun s -> s.Split([|" - "|], 2, StringSplitOptions.RemoveEmptyEntries))
+    |> Option.bind(function 
+      | [|name; artist|] -> { Artist = artist; Track = name } |> Some 
+      | _ -> None)
 
 // TODO
 [<RequireQualifiedAccess>]

@@ -10,10 +10,6 @@
     <Compile Include="Core.fs" />
     <Compile Include="Bot.fs" />
     <Compile Include="Functions/TelegramWebHook.fs" />
-    <Compile Include="Functions/SimplePipelineTelegramWebHook.fs" />
-    <Compile Include="Functions/ProcessSearchQuery.fs" />
-    <Compile Include="Functions/ProcessItunesLink.fs" />
-    <Compile Include="Functions/ProcessGMLink.fs" />
     <Content Include="*.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
