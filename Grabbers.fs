@@ -7,7 +7,7 @@ open Utils
 module HtmlAgilityWrappers =
   open HtmlAgilityPack
 
-  let loadDoc (url: Uri) = (HtmlWeb()).Load(url)
+  let loadDoc (url: Uri) = try (HtmlWeb()).Load(url) with | ex -> raise (new Exception("Error loading " + url.ToString(), ex))
 
   let extractFirstNode (selector: string) (doc: HtmlDocument) =       
     doc.DocumentNode.SelectSingleNode(selector) |> Option.ofObj
@@ -26,13 +26,7 @@ module HtmlAgilityWrappers =
     node.InnerText |> HttpUtility.HtmlDecode
 
 // Auto-generated xpath selectors
-module private Selectors = 
-  module AZ =
-    let lyricsSelector = "/html/body/div[3]/div/div[2]/div[5]"
-    let lyricsSearchResultSelector = "//*[@class='text-left visitedlyr']/a"
-    let songNameSelector = "/html/body/div[3]/div/div[2]/b"
-    let artistNameSelector = "/html/body/div[3]/div/div[2]/div[3]/h2/b"
-
+module private Selectors =
   module GM =
     let metaTitleSelector = "/html/head/meta[3]"
 
@@ -41,52 +35,25 @@ module private Selectors =
     let artistNameSelector = "//*[@class='product-header__identity']/a";
 
 [<RequireQualifiedAccess>]
-module AZLyrics =
-  open HtmlAgilityWrappers
-
-  let createSearchLyricsUrl query = 
-    let cleanQuery (query : String) = 
-      let openParIndex = query.IndexOf("(")
-      let closeParIndex = query.IndexOf(")") + 1
-      
-      if openParIndex > 0 && closeParIndex > 0
-      then 
-        query.Substring(0, openParIndex) + 
-        query.Substring(closeParIndex, query.Length - closeParIndex)
-      else query
-
-    cleanQuery query 
-    |> HttpUtility.UrlEncode
-    |> sprintf "https://search.azlyrics.com/search.php?q=%s&w=songs" 
-    |> createUri
-
-  let getFirstSearchResultLink lyricsPageDoc = 
-    lyricsPageDoc
-    |> extractFirstNode Selectors.AZ.lyricsSearchResultSelector 
-    |> Option.bind (extractAttr "href" )
-    |> Option.bind (createUri)
-
-  let extractArtist lyricsPageDoc =
-    lyricsPageDoc 
-    |> extractFirstNode Selectors.AZ.artistNameSelector
-    |> Option.map(extractText)
-    |> Option.map(fun artist -> artist.Replace("Lyrics", ""))
-
-  let extractTrack lyricsPageDoc =        
-    lyricsPageDoc 
-    |> extractFirstNode Selectors.AZ.songNameSelector 
-    |> Option.map(extractText)
-    |> Option.map(fun track -> track.Trim('"'))
-    
-  let extractLyrics lyricsPageDoc =
-    lyricsPageDoc
-    |> extractFirstNode Selectors.AZ.lyricsSelector 
-    |> Option.map(extractText)
-
-[<RequireQualifiedAccess>]
 module GoggleMusic = 
   open HtmlAgilityWrappers
   open LyricsBot.Model
+
+  let trim (text : String) = text.Trim()
+  let removeParentheses (text : String) = 
+    let openParIndex = text.IndexOf("(")
+    let closeParIndex = text.IndexOf(")") + 1
+    
+    if openParIndex > 0 && closeParIndex > 0
+    then 
+      text.Substring(0, openParIndex) + 
+      text.Substring(closeParIndex, text.Length - closeParIndex)
+    else text
+
+  let songName name artist = {
+    Artist = artist |> trim; 
+    Track = name |> removeParentheses |> trim 
+  }
 
   let extractSongName metaDoc = 
     metaDoc 
@@ -94,7 +61,7 @@ module GoggleMusic =
     |> Option.bind(extractAttr "content")
     |> Option.map(fun s -> s.Split([|" - "|], 2, StringSplitOptions.RemoveEmptyEntries))
     |> Option.bind(function 
-      | [|name; artist|] -> { Artist = artist; Track = name } |> Some 
+      | [|name; artist|] -> songName name artist |> Some        
       | _ -> None)
 
 // TODO

@@ -8,10 +8,10 @@ let printResponseLog = function
 | LyricsNotFound -> "Lyrics not found."  
 
 let printLinkProcessingResultLog = function
-| SearchQuery q -> sprintf "Search query added: %s" q
+| SongInfo s -> sprintf "Song info extracted: %s" s.Pretty
 | Response r -> printResponseLog r
 
 let printResponse = function
 | HelpDoc -> "Now type song name or share link from your music app (only Google Music allowed at the moment)."
-| LyricsFound (song, lyrics) -> sprintf "%s \n %s" song.Pretty (lyrics.Trim('\n'))
+| LyricsFound (song, lyrics) -> sprintf "%s \n\n %s" song.Pretty (lyrics.Trim('\n'))
 | LyricsNotFound -> "Lyrics not found."

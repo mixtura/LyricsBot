@@ -12,15 +12,13 @@ let (|MessageUpdate|_|) (u: Update) =
   then Some u.Message
   else None
 
-let createTelegramBotClient (context: ExecutionContext) =
+let createTelegramBotClient =
   let config = 
     (ConfigurationBuilder())
-      .SetBasePath(context.FunctionAppDirectory)
-      .AddJsonFile("local.settings.json", true, true)
       .AddEnvironmentVariables()
       .Build()
 
-  let token = config.["telegramBotToken"]
+  let token = config.["TelegramBotToken"]
 
   TelegramBotClient(token)
 

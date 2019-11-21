@@ -15,7 +15,7 @@ let run
    log: ILogger, 
    context: ExecutionContext) = 
 
-  let telegramBotClient = createTelegramBotClient context
+  let telegramBotClient = createTelegramBotClient
   let sendTextMessage chatId messageId response =
     sprintf "Sending response to chat with id %i. Response:\n%A" chatId response |> log.LogInformation
     response |> (printResponse >> splitAndSendMessages telegramBotClient chatId messageId)

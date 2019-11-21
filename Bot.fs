@@ -1,11 +1,11 @@
 module LyricsBot.Bot
 
-open LyricsBot.Grabbers.HtmlAgilityWrappers
-open LyricsBot.Model
-open LyricsBot.Utils
+open MouritsApi
+open Grabbers.HtmlAgilityWrappers
+open Model
+open Utils
 open System
 
-module AZ = LyricsBot.Grabbers.AZLyrics
 module GM = LyricsBot.Grabbers.GoggleMusic
 module IT = LyricsBot.Grabbers.Itunes
 
@@ -42,7 +42,7 @@ let processGMLink url=
   loadDoc url
   |> GM.extractSongName
   |> function
-    | Some (songName) -> SearchQuery songName.SearchQuery
+    | Some (songName) -> SongInfo songName
     | _ -> Response LyricsNotFound
 
 let processItunesLink url =
@@ -50,31 +50,27 @@ let processItunesLink url =
   |> (fun doc -> (IT.extractArtist doc, IT.extractTrack doc)) 
   |> function
     | (Some artist, Some track) -> 
-      let songName = {Artist = artist; Track = track}
-      SearchQuery songName.SearchQuery
+      SongInfo {Artist = artist; Track = track}
     | _ -> Response LyricsNotFound
 
-let processSearchQuery =
-  AZ.createSearchLyricsUrl 
-  >> Option.map(loadDoc)
-  >> Option.bind(AZ.getFirstSearchResultLink)
-  >> Option.map(loadDoc)
-  >> Option.map(fun doc -> 
-    (AZ.extractLyrics doc, 
-     AZ.extractArtist doc, 
-     AZ.extractTrack doc))
-  >> function 
-    | Some (Some lyrics, Some artist, Some track) -> 
-      LyricsFound ({Artist = artist; Track = track }, lyrics)
-    | _ -> LyricsNotFound
-
 let processMessage req =
+  let processApiResult (result : MouritsApiProvider.Root) = 
+    match result with
+    | result when result.Success = false -> LyricsNotFound
+    | result -> LyricsFound({Artist = result.Artist; Track = result.Song}, result.Result.Lyrics)
+
+  let api = makeRequest apiKey
+  let searchLyrics q = searchLyrics api q |> processApiResult
+  let getLyrics s = getLyrics api s |> function 
+    | result when result.Success = false -> searchLyrics s.SearchQuery
+    | result -> processApiResult result
+
   let processLinkResult = function
-  | SearchQuery q -> processSearchQuery q
+  | SongInfo s -> getLyrics s
   | Response r -> r
 
   match req with
-  | SearchLyricsQuery query -> processSearchQuery query
+  | SearchLyricsQuery query -> searchLyrics query
   | GMLink link -> processGMLink link |> processLinkResult
   | ItunesLink link -> processItunesLink link |> processLinkResult
-  | Start -> Response.HelpDoc  
+  | Start -> Response.HelpDoc
