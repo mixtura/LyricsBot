@@ -52,16 +52,18 @@ module GoggleMusic =
 
   let songName name artist = {
     Artist = artist |> trim; 
-    Track = name |> removeParentheses |> trim 
+    Track = name |> trim 
   }
 
   let extractSongName metaDoc = 
     metaDoc 
     |> extractFirstNode Selectors.GM.metaTitleSelector 
     |> Option.bind(extractAttr "content")
+    |> Option.map(removeParentheses)
     |> Option.map(fun s -> s.Split([|" - "|], 2, StringSplitOptions.RemoveEmptyEntries))
     |> Option.bind(function 
-      | [|name; artist|] -> songName name artist |> Some        
+      | [|name; artist|] -> 
+        songName name artist |> Some        
       | _ -> None)
 
 // TODO
