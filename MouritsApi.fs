@@ -5,7 +5,7 @@ open Model
 open System
 open Microsoft.Extensions.Configuration;
 
-type MouritsApiProvider = JsonProvider<"Data/apiResponseSample.json"> 
+type MouritsApiProvider = JsonProvider<"Data/mouritsApiResponseSample.json"> 
 
 let apiKey = 
   let config = 
