@@ -1,6 +1,6 @@
 module LyricsBot.Bot
 
-open MouritsApi
+open CanaradoApi
 open Grabbers.HtmlAgilityWrappers
 open Model
 open Utils
@@ -54,19 +54,16 @@ let processItunesLink url =
     | _ -> Response LyricsNotFound
 
 let processMessage req =
-  let processApiResult (result : MouritsApiProvider.Root) = 
+  let processApiResult (result : CanaradoApiProvider.Root) = 
     match result with
-    | result when result.Success = false -> LyricsNotFound
-    | result -> LyricsFound({Artist = result.Artist; Track = result.Song}, result.Result.Lyrics)
+    | result when result.Status.Failed = true -> LyricsNotFound
+    | result -> LyricsFound({Artist = result.Content.[0].Artist; Track = result.Content.[0].Title}, result.Content.[0].Lyrics)
 
   let api = makeRequest apiKey
   let searchLyrics q = searchLyrics api q |> processApiResult
-  let getLyrics s = getLyrics api s |> function 
-    | result when result.Success = false -> searchLyrics s.SearchQuery
-    | result -> processApiResult result
 
   let processLinkResult = function
-  | SongInfo s -> getLyrics s
+  | SongInfo s -> searchLyrics s.SearchQuery
   | Response r -> r
 
   match req with

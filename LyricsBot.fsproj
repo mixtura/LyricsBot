@@ -6,7 +6,7 @@
     <Compile Include="Utils.fs"/>
     <Compile Include="Model.fs"/>
     <Compile Include="Grabbers.fs"/>
-    <Compile Include="MouritsApi.fs" />
+    <Compile Include="CanaradoApi.fs" />
     <Compile Include="Telegram.fs"/>
     <Compile Include="Core.fs"/>
     <Compile Include="Bot.fs"/>
