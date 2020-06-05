@@ -1,59 +1,60 @@
 module LyricsBot.Telegram
 
-open Microsoft.Extensions.Configuration;
+open Microsoft.Extensions.Configuration
 open Microsoft.Azure.WebJobs
 open System
 open Telegram.Bot
 open Telegram.Bot.Types
-open Telegram.Bot.Types.Enums  
+open Telegram.Bot.Types.Enums
 
-let (|MessageUpdate|_|) (u: Update) = 
-  if u.Type = UpdateType.Message 
-  then Some u.Message
-  else None
+let (|MessageUpdate|_|) (u: Update) =
+    if u.Type = UpdateType.Message then Some u.Message else None
 
 let createTelegramBotClient =
-  let config = 
-    (ConfigurationBuilder())
-      .AddEnvironmentVariables()
-      .Build()
+    let config = (ConfigurationBuilder()).AddEnvironmentVariables().Build()
 
-  let token = config.["TelegramBotToken"]
+    let token = config.["TelegramBotToken"]
 
-  TelegramBotClient(token)
+    TelegramBotClient(token)
 
-let splitMessage (message: string) = 
-  let maxLength = 4096
-  
-  let (|Chunk|_|) (str:string) =    
-    if str.Length <= maxLength then None else
-    match str.Substring(0, maxLength).LastIndexOf('\n') with
-    | splitPoint when splitPoint > 0 
-      -> Some (str.Substring(0, splitPoint), str.Substring(splitPoint))
-    | _ -> Some (str.Substring(0, maxLength), str.Substring(maxLength))
+let splitMessage (message: string) =
+    let maxLength = 4096
 
-  let rec splitMessageInner (msg: string) acc =
-    match msg with
-    | Chunk (chunk, rest) -> splitMessageInner rest (chunk::acc) 
-    | _ -> msg::acc
+    let (|Chunk|_|) (str: string) =
+        if str.Length <= maxLength then
+            None
+        else
+            match str.Substring(0, maxLength).LastIndexOf('\n') with
+            | splitPoint when splitPoint > 0 -> Some(str.Substring(0, splitPoint), str.Substring(splitPoint))
+            | _ -> Some(str.Substring(0, maxLength), str.Substring(maxLength))
 
-  splitMessageInner message [] |> List.rev
+    let rec splitMessageInner (msg: string) acc =
+        match msg with
+        | Chunk(chunk, rest) -> splitMessageInner rest (chunk :: acc)
+        | _ -> msg :: acc
 
-let sendTextMessage (client: TelegramBotClient) (chatId: Int64) body = 
-  client.SendTextMessageAsync(ChatId(chatId), body) 
-  |> Async.AwaitTask 
-  |> Async.RunSynchronously 
-  |> ignore
+    splitMessageInner message [] |> List.rev
 
-let replyTextMessage (client: TelegramBotClient) (chatId: Int64) (replyToId: int) body = 
-  client.SendTextMessageAsync(ChatId(chatId), body, replyToMessageId = replyToId) 
-  |> Async.AwaitTask 
-  |> Async.RunSynchronously 
-  |> ignore
+let sendTextMessage (client: TelegramBotClient) (chatId: Int64) body =
+    client.SendTextMessageAsync(ChatId(chatId), body)
+    |> Async.AwaitTask
+    |> Async.RunSynchronously
+    |> ignore
+
+let replyTextMessage (client: TelegramBotClient) (chatId: Int64) (replyToId: int) body =
+    client.SendTextMessageAsync(ChatId(chatId), body, replyToMessageId = replyToId)
+    |> Async.AwaitTask
+    |> Async.RunSynchronously
+    |> ignore
 
 let splitAndSendMessages (client: TelegramBotClient) (chatId: Int64) (replyToId: int) body =
-  let replyMessages messages = 
-    messages |> List.head |> replyTextMessage client chatId replyToId
-    messages |> List.skip 1 |> List.iter(fun msg -> sendTextMessage client chatId msg)
+    let replyMessages messages =
+        messages
+        |> List.head
+        |> replyTextMessage client chatId replyToId
 
-  splitMessage body |> replyMessages
+        messages
+        |> List.skip 1
+        |> List.iter (fun msg -> sendTextMessage client chatId msg)
+
+    splitMessage body |> replyMessages

@@ -2,8 +2,7 @@
 
 open LyricsBot.Telegram
 
-let message = 
-    "[Hook: Brotha Lynch Hung]
+let message = "[Hook: Brotha Lynch Hung]
     That motherfucker kept sniffing for goods
     Put the plastic in his mouth the back of his neck left
     And you don't know nothing but the killer got away
@@ -131,4 +130,7 @@ let message =
     Cuz I'm swervin in the fast-lane gotta be spinning em up
     (X-caliba)"
 
-splitMessage message |> List.iter(fun x -> printf "%s" x; printf "\n--------------------------\n")
+splitMessage message
+|> List.iter (fun x ->
+    printf "%s" x
+    printf "\n--------------------------\n")
