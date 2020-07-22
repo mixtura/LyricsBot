@@ -18,6 +18,7 @@ type Message =
     | Start
     | GMLink of Uri
     | ItunesLink of Uri
+    | SpotifyLink of Uri
     | SearchLyricsQuery of string
 
 type LinkProcessingResult =

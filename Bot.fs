@@ -6,9 +6,6 @@ open Model
 open Utils
 open System
 
-module GM = LyricsBot.Grabbers.GoggleMusic
-module IT = LyricsBot.Grabbers.Itunes
-
 let parseMessage message =
     let extractLinks (str: string) =
         str.Split [| ' '; '\n'; '\t' |]
@@ -27,6 +24,7 @@ let parseMessage message =
             match head with
             | LinkWithHost "play.google.com" link -> GMLink link |> Some
             | LinkWithHost "itunes.apple.com" link -> ItunesLink link |> Some
+            | LinkWithHost "open.spotify.com" link -> SpotifyLink link |> Some
             | _ -> findValidLink rest
 
     match message with
@@ -36,16 +34,23 @@ let parseMessage message =
         |> findValidLink
         |> Option.defaultValue (SearchLyricsQuery message)
 
+let processSpotifyLink url =
+    loadDoc url
+    |> Grabbers.Spotify.extractSongName
+    |> function
+    | Some(songName) -> SongInfo songName
+    | _ -> Response LyricsNotFound
+
 let processGMLink url =
     loadDoc url
-    |> GM.extractSongName
+    |> Grabbers.GoggleMusic.extractSongName
     |> function
     | Some(songName) -> SongInfo songName
     | _ -> Response LyricsNotFound
 
 let processItunesLink url =
     loadDoc url
-    |> (fun doc -> (IT.extractArtist doc, IT.extractTrack doc))
+    |> (fun doc -> (Grabbers.Itunes.extractArtist doc, Grabbers.Itunes.extractTrack doc))
     |> function
     | (Some artist, Some track) ->
         SongInfo
@@ -72,6 +77,7 @@ let processMessage req =
 
     match req with
     | SearchLyricsQuery query -> searchLyrics query
+    | SpotifyLink link -> processSpotifyLink link |> processLinkResult
     | GMLink link -> processGMLink link |> processLinkResult
     | ItunesLink link -> processItunesLink link |> processLinkResult
     | Start -> Response.HelpDoc
