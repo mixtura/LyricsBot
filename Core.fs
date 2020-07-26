@@ -8,11 +8,6 @@ let renderResponseLog =
     | LyricsFound(song, _) -> sprintf "Lyrics found for song: %s" song.Pretty
     | LyricsNotFound -> "Lyrics not found."
 
-let printLinkProcessingResultLog =
-    function
-    | SongInfo s -> sprintf "Song info extracted: %s" s.Pretty
-    | Response r -> renderResponseLog r
-
 let renderResponse =
     function
     | HelpDoc ->

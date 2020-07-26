@@ -15,14 +15,18 @@ let run ([<HttpTrigger(AuthorizationLevel.Function, "post")>] update: Update, lo
     let telegramBotClient = createTelegramBotClient
 
     let sendTextMessage chatId messageId response =
-        sprintf "Sending response to chat with id %i. Response:\n%A" chatId response
+        response 
+        |> renderResponseLog 
+        |> sprintf "Sending response to chat with id %i. Response:\n%A" chatId 
         |> log.LogInformation
 
-        response |> (renderResponse >> splitAndSendMessages telegramBotClient chatId messageId)
+        response 
+        |> renderResponse 
+        |> splitAndSendMessages telegramBotClient chatId messageId
 
     let processMessage req =
         try
-            sprintf "Parsed message: %A" req |> log.LogInformation
+            sprintf "Going to process request: %A" req |> log.LogInformation
             processMessage req
         with ex ->
             log.LogError(ex, "Error happened while processing message.")
@@ -37,7 +41,7 @@ let run ([<HttpTrigger(AuthorizationLevel.Function, "post")>] update: Update, lo
 
         parseMessage message.Text
         |> processMessage
-        |> (sendTextMessage message.Chat.Id message.MessageId)
+        |> sendTextMessage message.Chat.Id message.MessageId
     | _ -> log.LogError "Not supported update type."
 
     log.LogInformation "TelegramWebHook ended."

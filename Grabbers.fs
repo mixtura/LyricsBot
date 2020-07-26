@@ -36,7 +36,8 @@ module private Selectors =
         let metaTitleSelector = "/html/head/meta[@property='og:title']"
 
     module Itunes =
-        let trackNameSelector = "//*[@class='table__row popularity-star we-selectable-item is-active is-available we-selectable-item--allows-interaction ember-view']/td[2]/div/div/div"
+        let trackNameSelector =
+            "//*[@class='table__row popularity-star we-selectable-item is-active is-available we-selectable-item--allows-interaction ember-view']/td[2]/div/div/div"
         let artistNameSelector = "//*[@class='product-header__identity']/a"
 
 [<RequireQualifiedAccess>]
